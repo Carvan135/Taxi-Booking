@@ -1,0 +1,157 @@
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import {
+  getDashboardPathForRole,
+} from "@/lib/auth/routes";
+import type { UserRole } from "@/types";
+
+/**
+ * Customer-only routes (sign-in required).
+ * `/book` is public — see `(public)/book`.
+ * `/dashboard` redirects to `/bookings` for backwards compatibility.
+ */
+const CUSTOMER_ROUTE_PREFIXES = [
+  "/dashboard",
+  "/bookings",
+  "/confirmation",
+  "/operators",
+  "/payment",
+] as const;
+
+function matchesProtectedPrefix(pathname: string, base: string): boolean {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
+function isPublicPath(pathname: string): boolean {
+  if (pathname === "/") return true;
+  const publicRoots = ["/contact", "/faq", "/privacy", "/terms"];
+  for (const root of publicRoots) {
+    if (pathname === root || pathname.startsWith(`${root}/`)) return true;
+  }
+  return false;
+}
+
+function isAuthPage(pathname: string): boolean {
+  return pathname.startsWith("/login") || pathname.startsWith("/signup");
+}
+
+function requiredRoleForPath(pathname: string): UserRole | null {
+  if (pathname.startsWith("/admin")) return "admin";
+  if (pathname.startsWith("/operator")) return "operator";
+  if (
+    CUSTOMER_ROUTE_PREFIXES.some((base) =>
+      matchesProtectedPrefix(pathname, base),
+    )
+  ) {
+    return "customer";
+  }
+  return null;
+}
+
+function mergeCookies(from: NextResponse, to: NextResponse): void {
+  from.cookies.getAll().forEach((c) => {
+    to.cookies.set(c.name, c.value);
+  });
+}
+
+/**
+ * Refreshes the Supabase session from cookies and enforces route-level role rules.
+ */
+export async function updateSession(request: NextRequest): Promise<NextResponse> {
+  let supabaseResponse = NextResponse.next({
+    request,
+  });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet, headers) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options),
+          );
+          Object.entries(headers).forEach(([key, value]) =>
+            supabaseResponse.headers.set(key, value),
+          );
+        },
+      },
+    },
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let role: UserRole | undefined;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    role = profile?.role as UserRole | undefined;
+  }
+
+  const pathname = request.nextUrl.pathname;
+  const search = request.nextUrl.search;
+
+  if (pathname.startsWith("/api")) {
+    return supabaseResponse;
+  }
+
+  if (isAuthPage(pathname)) {
+    if (user && role) {
+      const target = NextResponse.redirect(
+        new URL(getDashboardPathForRole(role), request.url),
+      );
+      mergeCookies(supabaseResponse, target);
+      return target;
+    }
+    return supabaseResponse;
+  }
+
+  if (isPublicPath(pathname)) {
+    return supabaseResponse;
+  }
+
+  const neededRole = requiredRoleForPath(pathname);
+
+  if (!neededRole) {
+    return supabaseResponse;
+  }
+
+  if (!user) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", `${pathname}${search}`);
+    const res = NextResponse.redirect(loginUrl);
+    mergeCookies(supabaseResponse, res);
+    return res;
+  }
+
+  if (!role) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", `${pathname}${search}`);
+    const res = NextResponse.redirect(loginUrl);
+    mergeCookies(supabaseResponse, res);
+    return res;
+  }
+
+  if (role !== neededRole) {
+    const dest = new URL(getDashboardPathForRole(role), request.url);
+    const res = NextResponse.redirect(dest);
+    mergeCookies(supabaseResponse, res);
+    return res;
+  }
+
+  return supabaseResponse;
+}
