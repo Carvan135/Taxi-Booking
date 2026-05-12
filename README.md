@@ -1,6 +1,6 @@
 # Carvan (TaxiBook)
 
-Customer–operator taxi booking marketplace for the UK. Milestone 1 focuses on auth, operator onboarding, Supabase data layer, and Stripe Connect (test mode) scaffolding.
+Customer–operator taxi booking marketplace for the UK. Milestone 1 focuses on auth, operator onboarding, Supabase data layer, and Stripe Connect (test mode) scaffolding
 
 ## Tech stack
 
