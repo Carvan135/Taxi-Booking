@@ -4,6 +4,7 @@ Customer–operator taxi booking marketplace for the UK. Milestone 1 focuses on 
 
 ## Tech stack
 
+
 - **Framework:** [Next.js](https://nextjs.org/) 14 (App Router), React 18, TypeScript
 - **Styling:** Tailwind CSS
 - **Auth & data:** [Supabase](https://supabase.com/) (Auth, Postgres, Storage)
