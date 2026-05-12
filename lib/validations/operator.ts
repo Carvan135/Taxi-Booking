@@ -88,14 +88,8 @@ export type OperatorOnboardingClientValues = z.infer<
 >;
 
 /** Operator account creation + Step 1 details (includes password). */
-export const operatorSignUpFormSchema = operatorOnboardingFormSchema
-  .extend({
-    password: signUpSchema.shape.password,
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
+export const operatorSignUpFormSchema = operatorOnboardingFormSchema.extend({
+  password: signUpSchema.shape.password,
+});
 
 export type OperatorSignUpFormInput = z.input<typeof operatorSignUpFormSchema>;

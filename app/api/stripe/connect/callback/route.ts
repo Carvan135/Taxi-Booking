@@ -25,9 +25,8 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (operatorError || !operator?.stripe_account_id) {
-      const onboarding = new URL("/operator/onboarding", request.url);
-      onboarding.searchParams.set("stripe_error", "missing_account");
-      return NextResponse.redirect(onboarding);
+      dashboardUrl.searchParams.set("stripe_error", "missing_account");
+      return NextResponse.redirect(dashboardUrl);
     }
 
     try {

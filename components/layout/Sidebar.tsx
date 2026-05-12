@@ -1,60 +1,75 @@
+"use client";
+
+import type { LucideIcon } from "lucide-react";
+import {
+  Calendar,
+  LayoutDashboard,
+  Shield,
+  User,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
-import { signOut } from "@/lib/auth/actions";
+import { usePathname } from "next/navigation";
 
 type SidebarVariant = "operator" | "admin";
 
-type NavItem = { href: string; label: string };
+type NavItem = { href: string; label: string; icon: LucideIcon };
 
 const operatorItems: NavItem[] = [
-  { href: "/operator/dashboard", label: "Dashboard" },
-  { href: "/operator/bookings", label: "Bookings" },
-  { href: "/operator/profile", label: "Profile" },
+  { href: "/operator/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/operator/bookings", label: "Bookings", icon: Calendar },
+  { href: "/operator/profile", label: "Profile", icon: User },
 ];
 
 const adminItems: NavItem[] = [
-  { href: "/admin/dashboard", label: "Dashboard" },
-  { href: "/admin/bookings", label: "Bookings" },
-  { href: "/admin/operators", label: "Operators" },
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/bookings", label: "Bookings", icon: Calendar },
+  { href: "/admin/operators", label: "Operators", icon: Users },
 ];
 
 type SidebarProps = {
   variant: SidebarVariant;
+  onNavigate?: () => void;
 };
 
-export function Sidebar({ variant }: SidebarProps) {
+export function Sidebar({ variant, onNavigate }: SidebarProps) {
+  const pathname = usePathname();
   const items = variant === "operator" ? operatorItems : adminItems;
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-white/10 bg-primary text-primary-foreground">
-      <div className="border-b border-white/10 px-4 py-5">
-        <Link href="/" className="text-lg font-bold tracking-tight text-white">
-          TaxiBook
-        </Link>
-        <p className="mt-1 text-xs font-medium uppercase tracking-wide text-white/70">
+    <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
+      <div className="flex items-center gap-2 px-4 py-5">
+        {variant === "admin" ? (
+          <Shield className="h-5 w-5 shrink-0 text-secondary" aria-hidden />
+        ) : null}
+        <div className="text-sm font-semibold tracking-tight text-primary">
           {variant === "operator" ? "Operator" : "Admin"}
-        </p>
+        </div>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
-        {items.map(({ href, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-white/90 transition hover:bg-white/10 hover:text-white"
-          >
-            {label}
-          </Link>
-        ))}
+      <nav className="flex flex-1 flex-col gap-1 px-3 pb-5">
+        {items.map(({ href, label, icon: Icon }) => {
+          const active =
+            pathname === href || pathname.startsWith(`${href}/`);
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                active
+                  ? "bg-sky-50 text-secondary"
+                  : "text-content/80 hover:bg-slate-100 hover:text-content"
+              }`}
+              onClick={onNavigate}
+            >
+              <Icon
+                className={`h-5 w-5 shrink-0 ${active ? "text-secondary" : "text-content/60"}`}
+                aria-hidden
+              />
+              {label}
+            </Link>
+          );
+        })}
       </nav>
-      <div className="border-t border-white/10 p-3">
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-white/90 transition hover:bg-white/10"
-          >
-            Logout
-          </button>
-        </form>
-      </div>
     </aside>
   );
 }

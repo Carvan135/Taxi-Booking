@@ -2,6 +2,7 @@ export type StatusBadgeStatus =
   | "pending"
   | "approved"
   | "rejected"
+  | "suspended"
   | "confirmed"
   | "completed"
   | "cancelled";
@@ -21,6 +22,10 @@ const styles: Record<
   rejected: {
     className: "bg-red-100 text-red-800 ring-red-200/80",
     label: "Rejected",
+  },
+  suspended: {
+    className: "bg-slate-200 text-slate-800 ring-slate-300/80",
+    label: "Suspended",
   },
   confirmed: {
     className: "bg-emerald-100 text-emerald-900 ring-emerald-200/80",

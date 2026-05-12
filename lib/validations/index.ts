@@ -19,4 +19,9 @@ export {
   type OperatorOnboardingFormData,
   type OperatorSignUpFormInput,
 } from "./operator";
+export {
+  operatorProfileFormSchema,
+  operatorProfileVehicleTypes,
+  type OperatorProfileFormValues,
+} from "./operatorProfile";
 export { formatZodError } from "./utils";

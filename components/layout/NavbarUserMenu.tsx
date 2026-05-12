@@ -4,6 +4,7 @@ import { ChevronDown, LogOut, User } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/lib/auth/actions";
+import { FormSubmitSpinner } from "@/components/ui/FormSubmitSpinner";
 import type { UserRole } from "@/types";
 
 export type NavbarUserMenuSession = {
@@ -137,14 +138,13 @@ export function NavbarUserMenu({ session, appearance }: NavbarUserMenuProps) {
                 </Link>
               ) : (
                 <form key="logout" action={signOut}>
-                  <button
-                    type="submit"
+                  <FormSubmitSpinner
                     role="menuitem"
-                    className={`${linkClass} w-full text-red-700 hover:bg-red-50 hover:text-red-800`}
+                    icon={<LogOut className="h-4 w-4 shrink-0" aria-hidden />}
+                    className={`${linkClass} w-full text-red-700 hover:bg-red-50 hover:text-red-800 disabled:opacity-60`}
                   >
-                    <LogOut className="h-4 w-4 shrink-0" aria-hidden />
                     Log out
-                  </button>
+                  </FormSubmitSpinner>
                 </form>
               ),
             )}

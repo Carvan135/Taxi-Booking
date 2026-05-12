@@ -48,6 +48,11 @@ export type Operator = {
   status: OperatorStatus;
   rating: number;
   total_reviews: number;
+  /** Business / depot address (profile settings) */
+  business_address: string | null;
+  business_description: string | null;
+  fleet_vehicle_count: number;
+  fleet_vehicle_types: string | null;
   created_at: string;
   updated_at: string;
 };

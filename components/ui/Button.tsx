@@ -44,18 +44,25 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) {
     const isDisabled = disabled ?? loading;
+    const spinnerClass =
+      size === "sm"
+        ? "h-3.5 w-3.5 shrink-0 animate-spin"
+        : size === "lg"
+          ? "h-5 w-5 shrink-0 animate-spin"
+          : "h-4 w-4 shrink-0 animate-spin";
 
     return (
       <button
         ref={ref}
         type={type}
         disabled={isDisabled}
+        aria-busy={loading || undefined}
         className={`inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
         {...rest}
       >
         {loading ? (
           <>
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+            <Loader2 className={spinnerClass} aria-hidden />
             <span>{children}</span>
           </>
         ) : (

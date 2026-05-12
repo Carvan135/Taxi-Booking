@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useState } from "react";
+import { useState } from "react";
 import { updateOperatorApproval } from "@/lib/actions/adminOperators";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -17,17 +17,21 @@ export function PendingOperatorsPanel({
 }: {
   operators: PendingOperatorRow[];
 }) {
-  const [isPending, startTransition] = useTransition();
+  const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function run(id: string, status: "approved" | "rejected") {
+  async function run(id: string, status: "approved" | "rejected") {
+    const key = `${id}:${status}`;
     setError(null);
-    startTransition(async () => {
+    setBusyKey(key);
+    try {
       const res = await updateOperatorApproval(id, status);
       if (!res.success) {
         setError(res.error ?? "Could not update operator.");
       }
-    });
+    } finally {
+      setBusyKey(null);
+    }
   }
 
   if (operators.length === 0) {
@@ -76,8 +80,9 @@ export function PendingOperatorsPanel({
                       type="button"
                       variant="primary"
                       size="sm"
-                      disabled={isPending}
-                      onClick={() => run(op.id, "approved")}
+                      loading={busyKey === `${op.id}:approved`}
+                      disabled={busyKey !== null}
+                      onClick={() => void run(op.id, "approved")}
                       className="!min-h-8 bg-emerald-600 !text-white hover:opacity-95 focus-visible:ring-emerald-600"
                     >
                       Approve
@@ -86,8 +91,9 @@ export function PendingOperatorsPanel({
                       type="button"
                       variant="secondary"
                       size="sm"
-                      disabled={isPending}
-                      onClick={() => run(op.id, "rejected")}
+                      loading={busyKey === `${op.id}:rejected`}
+                      disabled={busyKey !== null}
+                      onClick={() => void run(op.id, "rejected")}
                       className="!min-h-8 border-red-300 text-red-700 hover:bg-red-50"
                     >
                       Reject

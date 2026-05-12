@@ -1,4 +1,4 @@
-import { Sidebar } from "@/components/layout/Sidebar";
+import { DashboardShell } from "@/components/layout/DashboardShell";
 import { requireRole } from "@/lib/auth/helpers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,10 +10,5 @@ export default async function OperatorLayout({
   const supabase = createClient();
   await requireRole(supabase, ["operator"]);
 
-  return (
-    <div className="flex min-h-screen bg-accent">
-      <Sidebar variant="operator" />
-      <main className="flex-1 overflow-auto">{children}</main>
-    </div>
-  );
+  return <DashboardShell variant="operator">{children}</DashboardShell>;
 }

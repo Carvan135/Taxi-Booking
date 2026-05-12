@@ -1,4 +1,4 @@
-import { Sidebar } from "@/components/layout/Sidebar";
+import { DashboardShell } from "@/components/layout/DashboardShell";
 import { requireRole } from "@/lib/auth/helpers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,10 +10,5 @@ export default async function AdminLayout({
   const supabase = createClient();
   await requireRole(supabase, ["admin"]);
 
-  return (
-    <div className="flex min-h-screen bg-accent">
-      <Sidebar variant="admin" />
-      <main className="flex-1 overflow-auto">{children}</main>
-    </div>
-  );
+  return <DashboardShell variant="admin">{children}</DashboardShell>;
 }

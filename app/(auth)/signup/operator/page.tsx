@@ -81,7 +81,6 @@ export default function OperatorSignupPage() {
     register,
     control,
     handleSubmit,
-    trigger,
     watch,
     setValue,
     formState: { errors, isSubmitting },
@@ -95,7 +94,6 @@ export default function OperatorSignupPage() {
       email: "",
       phone: "",
       password: "",
-      confirmPassword: "",
       vehicle_type: "Sedan",
       vehicle_registration: "",
       license_number: "",
@@ -209,7 +207,7 @@ export default function OperatorSignupPage() {
       return;
     }
 
-    router.replace("/operator/onboarding");
+    router.replace("/operator/dashboard");
     router.refresh();
   });
 
@@ -256,16 +254,6 @@ export default function OperatorSignupPage() {
             autoComplete="name"
           />
           <FormField
-            label="Business name *"
-            name="business_name"
-            register={register("business_name")}
-            error={errors.business_name}
-            placeholder="Your Taxi Company Ltd"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
-          <FormField
             label="Email *"
             name="email"
             register={register("email")}
@@ -274,6 +262,9 @@ export default function OperatorSignupPage() {
             placeholder="john@taxicompany.com"
             autoComplete="email"
           />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
           <FormField
             label="Phone number *"
             name="phone"
@@ -289,6 +280,13 @@ export default function OperatorSignupPage() {
             autoComplete="tel"
             inputMode="tel"
           />
+          <FormField
+            label="Business name *"
+            name="business_name"
+            register={register("business_name")}
+            error={errors.business_name}
+            placeholder="Your Taxi Company Ltd"
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
@@ -302,16 +300,37 @@ export default function OperatorSignupPage() {
             placeholder="Create a password"
             autoComplete="new-password"
           />
-          <FormField
-            label="Confirm password *"
-            name="confirmPassword"
-            register={register("confirmPassword")}
-            error={errors.confirmPassword}
-            type="password"
-            passwordToggle
-            placeholder="Confirm password"
-            autoComplete="new-password"
-          />
+          <div>
+            <label
+              htmlFor="base_price"
+              className="mb-1.5 block text-sm font-medium text-content"
+            >
+              Base price (£) *
+            </label>
+            <input
+              id="base_price"
+              type="number"
+              step="0.01"
+              min={1}
+              placeholder="5.00"
+              className="w-full rounded-xl border border-gray-300 bg-slate-50 px-4 py-2.5 text-content shadow-sm focus:border-secondary focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              {...register("base_price", { valueAsNumber: true })}
+              aria-invalid={errors.base_price ? "true" : "false"}
+              aria-describedby={errors.base_price ? basePriceErrorId : undefined}
+            />
+            <p className="mt-1.5 text-xs text-content/60">
+              Starting fare for your service
+            </p>
+            {errors.base_price?.message ? (
+              <p
+                id={basePriceErrorId}
+                className="mt-1.5 text-sm text-red-600"
+                role="alert"
+              >
+                {String(errors.base_price.message)}
+              </p>
+            ) : null}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
@@ -392,38 +411,6 @@ export default function OperatorSignupPage() {
               </p>
             ) : null}
           </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="base_price"
-            className="mb-1.5 block text-sm font-medium text-content"
-          >
-            Base price (£) *
-          </label>
-          <input
-            id="base_price"
-            type="number"
-            step="0.01"
-            min={1}
-            placeholder="5.00"
-            className="w-full rounded-xl border border-gray-300 bg-slate-50 px-4 py-2.5 text-content shadow-sm focus:border-secondary focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-            {...register("base_price", { valueAsNumber: true })}
-            aria-invalid={errors.base_price ? "true" : "false"}
-            aria-describedby={errors.base_price ? basePriceErrorId : undefined}
-          />
-          <p className="mt-1.5 text-xs text-content/60">
-            Starting fare for your service
-          </p>
-          {errors.base_price?.message ? (
-            <p
-              id={basePriceErrorId}
-              className="mt-1.5 text-sm text-red-600"
-              role="alert"
-            >
-              {String(errors.base_price.message)}
-            </p>
-          ) : null}
         </div>
 
         <div>
