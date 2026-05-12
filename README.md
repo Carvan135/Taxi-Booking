@@ -2,6 +2,9 @@
 
 Customer–operator taxi booking marketplace for the UK. Milestone 1 focuses on auth, operator onboarding, Supabase data layer, and Stripe Connect (test mode) scaffolding.
 
+
+
+
 ## Tech stack
 
 - **Framework:** [Next.js](https://nextjs.org/) 14 (App Router), React 18, TypeScript
