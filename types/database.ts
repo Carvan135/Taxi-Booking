@@ -45,6 +45,9 @@ export type Operator = {
   base_price: number;
   stripe_account_id: string | null;
   stripe_onboarding_complete: boolean;
+  stripe_payouts_enabled: boolean;
+  /** First time Stripe enabled payouts for this connected account */
+  stripe_connected_at: string | null;
   status: OperatorStatus;
   rating: number;
   total_reviews: number;

@@ -207,6 +207,19 @@ export default function OperatorSignupPage() {
       return;
     }
 
+    try {
+      const origin =
+        typeof window !== "undefined"
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+      const url = origin
+        ? `${origin}/api/stripe/connect/create-account`
+        : "/api/stripe/connect/create-account";
+      await fetch(url, { method: "POST", credentials: "include" });
+    } catch (err) {
+      console.error("Silent Stripe account creation failed:", err);
+    }
+
     router.replace("/operator/dashboard");
     router.refresh();
   });

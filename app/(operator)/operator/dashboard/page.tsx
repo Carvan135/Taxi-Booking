@@ -5,6 +5,8 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { ClearStripeReturnQuery } from "@/components/operator/ClearStripeReturnQuery";
+import { ConnectStripeButton } from "@/components/operator/ConnectStripeButton";
 import { OperatorDashboardStatusBanner } from "@/components/operator/OperatorDashboardStatusBanner";
 import { StatCard } from "@/components/ui/StatCard";
 import { createClient } from "@/lib/supabase/server";
@@ -61,7 +63,48 @@ function formatMoney(n: number): string {
   return `£${n.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-export default async function OperatorDashboardPage() {
+function formatConnectedDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      dateStyle: "medium",
+      timeZone: "Europe/London",
+    }).format(new Date(iso));
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
+function operatorDashboardBannerId(
+  status: OperatorStatus,
+  stripeOnboardingComplete: boolean,
+  stripePayoutsEnabled: boolean,
+): string {
+  if (status === "pending") return "op-pending";
+  if (status === "rejected") return "op-rejected";
+  if (status === "suspended") return "op-suspended";
+  if (status === "approved") {
+    if (!stripeOnboardingComplete) return "op-approved-stripe-setup";
+    if (!stripePayoutsEnabled) return "op-approved-stripe-review";
+    return "op-approved-payouts";
+  }
+  return `op-other-${status}`;
+}
+
+function stripeReturnSuccess(
+  searchParams?: Record<string, string | string[] | undefined>,
+): boolean {
+  const v = searchParams?.stripe;
+  if (v === "success") return true;
+  if (Array.isArray(v)) return v.includes("success");
+  return false;
+}
+
+export default async function OperatorDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const supabase = createClient();
   const {
     data: { user },
@@ -69,22 +112,31 @@ export default async function OperatorDashboardPage() {
 
   const { data: operator } = await supabase
     .from("operators")
-    .select("id, business_name, status")
+    .select(
+      "id, business_name, status, stripe_onboarding_complete, stripe_payouts_enabled, stripe_connected_at",
+    )
     .eq("user_id", user?.id ?? "")
     .maybeSingle();
 
+  const fromStripeReturn = stripeReturnSuccess(searchParams);
+
+  const rawOp = operator as Record<string, unknown> | null;
   const status = (operator?.status ?? "pending") as OperatorStatus;
+  const stripeOnboardingComplete =
+    rawOp?.stripe_onboarding_complete === true;
+  const stripePayoutsEnabled = rawOp?.stripe_payouts_enabled === true;
+  const stripeConnectedAt =
+    rawOp?.stripe_connected_at == null
+      ? null
+      : String(rawOp.stripe_connected_at);
+
   const statusBannerId = !operator
     ? "no-operator"
-    : status === "approved"
-      ? "approved"
-      : status === "pending"
-        ? "pending"
-        : status === "rejected"
-          ? "rejected"
-          : status === "suspended"
-            ? "suspended"
-            : `other-${status}`;
+    : operatorDashboardBannerId(
+        status,
+        stripeOnboardingComplete,
+        stripePayoutsEnabled,
+      );
   const todayStr = londonTodayYmd();
   const operatorId = operator?.id ?? null;
 
@@ -193,9 +245,18 @@ export default async function OperatorDashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
         <p className="mt-1 text-sm text-content/70">
-          Welcome back! Here&apos;s your overview for today.
+          Welcome back! Here&apos;s your overview for today.{" "}
+          <Link
+            href="/operator/finances"
+            className="font-medium text-secondary underline-offset-2 hover:underline"
+          >
+            Finances
+          </Link>{" "}
+          has payout onboarding, earnings, and payout history.
         </p>
       </div>
+
+      {fromStripeReturn ? <ClearStripeReturnQuery /> : null}
 
       {/* Informational status — navigation stays available regardless of approval */}
       <OperatorDashboardStatusBanner
@@ -214,19 +275,82 @@ export default async function OperatorDashboardPage() {
             to submit your details for review.
           </div>
         ) : status === "pending" ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <div className="rounded-xl border border-slate-200 bg-slate-100/90 px-4 py-3 text-sm text-slate-800">
             <strong className="font-semibold">Under review.</strong> Your account
             is under review. We&apos;ll notify you within 24–48 hours.
           </div>
-        ) : status === "approved" ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-            <strong className="font-semibold">Active.</strong> Your account is
-            active.
-          </div>
-        ) : status === "rejected" || status === "suspended" ? (
+        ) : status === "rejected" ? (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-            Your operator status is <strong>{status}</strong>. Contact support if
-            you need help.
+            <strong className="font-semibold">Application not approved.</strong>{" "}
+            Please contact support if you have questions.
+          </div>
+        ) : status === "suspended" ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+            Your operator account is <strong>suspended</strong>. Contact support
+            if you need help.
+          </div>
+        ) : status === "approved" && !stripeOnboardingComplete ? (
+          <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="min-w-0">
+              {fromStripeReturn ? (
+                <p className="font-semibold text-amber-950">
+                  Bank details received from Stripe.
+                </p>
+              ) : null}
+              <p
+                className={
+                  fromStripeReturn
+                    ? "mt-1 font-semibold text-amber-950"
+                    : "font-semibold"
+                }
+              >
+                Set up your payouts to start earning
+              </p>
+              <p className="mt-1 text-amber-900/90">
+                Connect your bank account through Stripe so we can pay you for
+                completed trips.
+              </p>
+            </div>
+            <ConnectStripeButton tone="amber-banner" />
+          </div>
+        ) : status === "approved" &&
+          stripeOnboardingComplete &&
+          !stripePayoutsEnabled ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            {fromStripeReturn ? (
+              <>
+                <strong className="font-semibold">Bank details received.</strong>{" "}
+                Stripe is verifying your information. Payouts unlock once that
+                finishes — usually 1–2 business days.
+              </>
+            ) : (
+              <>
+                <strong className="font-semibold">Verification in progress.</strong>{" "}
+                Your payout setup is being reviewed by Stripe. This usually takes
+                1–2 business days.
+              </>
+            )}
+          </div>
+        ) : status === "approved" &&
+          stripeOnboardingComplete &&
+          stripePayoutsEnabled ? (
+          <div className="flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              <span className="font-semibold" aria-hidden>
+                ✓{" "}
+              </span>
+              <strong className="font-semibold">Payouts enabled.</strong>{" "}
+              {stripeConnectedAt ? (
+                <>
+                  Connected on {formatConnectedDate(stripeConnectedAt)}.
+                </>
+              ) : (
+                "Your bank account is connected."
+              )}
+            </p>
+            <p className="text-emerald-900/85 sm:text-right">
+              You&apos;re active for bookings.
+            </p>
           </div>
         ) : (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-content/80">

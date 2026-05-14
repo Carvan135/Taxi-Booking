@@ -26,6 +26,7 @@ function menuEntries(role: UserRole): MenuEntry[] {
     case "operator":
       return [
         { kind: "link", href: "/operator/dashboard", label: "Dashboard" },
+        { kind: "link", href: "/operator/finances", label: "Finances" },
         { kind: "link", href: "/operator/profile", label: "Profile" },
         { kind: "logout" },
       ];

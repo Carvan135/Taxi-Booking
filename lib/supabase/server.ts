@@ -1,6 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+/** Service-role client for webhooks and server-only jobs (no user cookies). */
+export { createAdminClient as createServiceRoleClient } from "@/lib/supabase/admin";
+
 export function createClient() {
   const cookieStore = cookies();
 

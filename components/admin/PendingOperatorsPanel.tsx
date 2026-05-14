@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { updateOperatorApproval } from "@/lib/actions/adminOperators";
 import { Button } from "@/components/ui/Button";
@@ -17,6 +18,7 @@ export function PendingOperatorsPanel({
 }: {
   operators: PendingOperatorRow[];
 }) {
+  const router = useRouter();
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +67,11 @@ export function PendingOperatorsPanel({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {operators.map((op) => (
-              <tr key={op.id} className="hover:bg-slate-50/80">
+              <tr
+                key={op.id}
+                className="cursor-pointer hover:bg-slate-50/80"
+                onClick={() => router.push(`/admin/operators/${op.id}`)}
+              >
                 <td className="px-4 py-3 font-medium text-content">
                   {op.operatorName}
                 </td>
@@ -74,7 +80,10 @@ export function PendingOperatorsPanel({
                 <td className="px-4 py-3">
                   <StatusBadge status="pending" />
                 </td>
-                <td className="px-4 py-3">
+                <td
+                  className="px-4 py-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="flex flex-wrap justify-end gap-2">
                     <Button
                       type="button"

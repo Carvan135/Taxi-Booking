@@ -1,4 +1,4 @@
-import { loadStripe } from "@stripe/stripe-js";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
 
@@ -9,3 +9,8 @@ const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
 export const stripePromise = publishableKey
   ? loadStripe(publishableKey)
   : null;
+
+/** Same instance as `stripePromise` (for call sites that prefer a getter). */
+export function getStripe(): Promise<Stripe | null> | null {
+  return stripePromise;
+}

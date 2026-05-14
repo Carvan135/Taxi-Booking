@@ -20,8 +20,8 @@ export function DashboardShell({ variant, children }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-accent">
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/95 backdrop-blur-md">
+    <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-accent">
+      <header className="z-50 shrink-0 border-b border-white/10 bg-slate-950/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-2">
             <button
@@ -52,12 +52,14 @@ export function DashboardShell({ variant, children }: DashboardShellProps) {
         </div>
       </header>
 
-      <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1600px]">
-        {/* Desktop sidebar */}
-        <div className="hidden md:flex">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1">
+        {/* Desktop sidebar: full viewport height below header; only main scrolls */}
+        <div className="hidden shrink-0 md:block">
           <Sidebar variant={variant} />
         </div>
-        <main className="min-w-0 flex-1 overflow-auto">{children}</main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain">
+          {children}
+        </main>
       </div>
 
       {/* Mobile sidebar drawer */}

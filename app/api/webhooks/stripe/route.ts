@@ -1,0 +1,76 @@
+import Stripe from "stripe";
+import { getStripeServer } from "@/lib/stripe/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(req: Request) {
+  const stripe = getStripeServer();
+  const body = await req.text();
+  const signature = req.headers.get("stripe-signature");
+
+  if (!signature) {
+    return new Response("Missing stripe-signature header", { status: 400 });
+  }
+
+  let event: Stripe.Event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!,
+    );
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err);
+    return new Response("Invalid signature", { status: 400 });
+  }
+
+  const supabase = createServiceRoleClient();
+
+  try {
+    switch (event.type) {
+      case "account.updated": {
+        const account = event.data.object as Stripe.Account;
+
+        const { data: operator, error } = await supabase
+          .from("operators")
+          .select("id, stripe_payouts_enabled")
+          .eq("stripe_account_id", account.id)
+          .maybeSingle();
+
+        if (error || !operator) {
+          console.warn("No operator found for Stripe account:", account.id);
+          break;
+        }
+
+        const wasAlreadyEnabled = operator.stripe_payouts_enabled === true;
+        const nowEnabled = account.payouts_enabled ?? false;
+
+        const row: Record<string, unknown> = {
+          stripe_onboarding_complete: account.details_submitted ?? false,
+          stripe_payouts_enabled: nowEnabled,
+          updated_at: new Date().toISOString(),
+        };
+        if (!wasAlreadyEnabled && nowEnabled) {
+          row.stripe_connected_at = new Date().toISOString();
+        }
+
+        await supabase.from("operators").update(row).eq("id", operator.id);
+
+        console.log(`Operator ${operator.id} updated:`, {
+          details_submitted: account.details_submitted,
+          payouts_enabled: nowEnabled,
+        });
+        break;
+      }
+
+      default:
+        console.log(`Unhandled Stripe event type: ${event.type}`);
+    }
+  } catch (err) {
+    console.error("Error handling webhook event:", err);
+  }
+
+  return new Response("ok", { status: 200 });
+}

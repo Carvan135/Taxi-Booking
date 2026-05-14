@@ -1,17 +1,30 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { Booking } from "@/types";
+import type { Booking, VehicleType } from "@/types";
 
 const DEFAULT_STALE_TIME = 1000 * 60;
+
+/** Row returned from `bookings` with embedded `operators` (Supabase FK name). */
+export type CustomerBookingRow = Booking & {
+  operators: {
+    id: string;
+    business_name: string;
+    vehicle_type: VehicleType;
+  } | null;
+};
 
 export function useMyBookings() {
   const supabase = createClient();
 
   return useQuery({
     queryKey: ["bookings", "customer"],
-    queryFn: async (): Promise<Booking[]> => {
+    queryFn: async (): Promise<CustomerBookingRow[]> => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -19,15 +32,37 @@ export function useMyBookings() {
 
       const { data, error } = await supabase
         .from("bookings")
-        .select("*")
+        .select(
+          `
+          *,
+          operators!bookings_operator_id_fkey ( id, business_name, vehicle_type )
+        `,
+        )
         .eq("customer_id", user.id)
         .order("pickup_date", { ascending: false })
         .order("pickup_time", { ascending: false });
 
       if (error) throw error;
-      return (data ?? []) as Booking[];
+      return (data ?? []) as CustomerBookingRow[];
     },
     staleTime: DEFAULT_STALE_TIME,
+  });
+}
+
+export function useCancelMyBooking() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { error } = await supabase.rpc("customer_cancel_booking", {
+        p_booking_id: bookingId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bookings", "customer"] });
+    },
   });
 }
 

@@ -7,6 +7,7 @@ import {
   Shield,
   User,
   Users,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -18,6 +19,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 const operatorItems: NavItem[] = [
   { href: "/operator/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/operator/bookings", label: "Bookings", icon: Calendar },
+  { href: "/operator/finances", label: "Finances", icon: Wallet },
   { href: "/operator/profile", label: "Profile", icon: User },
 ];
 
@@ -37,7 +39,7 @@ export function Sidebar({ variant, onNavigate }: SidebarProps) {
   const items = variant === "operator" ? operatorItems : adminItems;
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
+    <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white md:h-full">
       <div className="flex items-center gap-2 px-4 py-5">
         {variant === "admin" ? (
           <Shield className="h-5 w-5 shrink-0 text-secondary" aria-hidden />
