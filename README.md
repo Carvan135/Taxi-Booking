@@ -33,10 +33,10 @@ Customer–operator taxi booking marketplace for the UK. Milestone 1 focuses on 
 
 2. **Environment**
 
-   Copy `.env.example` to `.env.local` and fill in values from the Supabase project (**Settings → API**) and Stripe (**Developers → API keys**, test mode).
+   Copy `.env.example` to `.env` (or `.env.local`) and fill in values from the Supabase project (**Settings → API**) and Stripe (**Developers → API keys**, test mode). Do not commit `.env` or `.env.production`.
 
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
 
 3. **Supabase**
@@ -67,7 +67,19 @@ Customer–operator taxi booking marketplace for the UK. Milestone 1 focuses on 
 | `npm run lint` | ESLint (`next lint`) |
 | `npm run typecheck` | TypeScript (`tsc --noEmit`) |
 
-## Deployment (Vercel + GitHub)
+## Deployment
+
+### Netlify
+
+1. Connect the repo and set the build command to `npm run build` (Next.js).
+2. Under **Site settings → Build & deploy → Environment → Environment variables**, add every key from `.env.example` with real values (never commit them):
+   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+   - `NEXT_PUBLIC_APP_URL` (your Netlify site URL, e.g. `https://your-site.netlify.app`)
+   - Optional: `NEXT_PUBLIC_SUPPORT_EMAIL`
+3. Redeploy after removing `.env` / `.env.production` from the repository. If secrets were ever pushed to a public repo, rotate Stripe and Supabase keys and consider purging git history ([BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) or `git filter-repo`).
+
+### Vercel + GitHub
 
 - Connect the repo to Vercel and import the project (framework: Next.js).
 - **Environment variables:** `vercel.json` maps each runtime key to a **Vercel secret reference** (for example `@next_public_supabase_url`). Create matching secrets in the Vercel project or team, **or** remove the `"env"` block from `vercel.json` and define the same variable names from `.env.example` entirely under **Project → Settings → Environment Variables** (the approach Vercel recommends today).
