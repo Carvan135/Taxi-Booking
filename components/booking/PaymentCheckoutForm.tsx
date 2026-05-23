@@ -256,6 +256,7 @@ export function PaymentCheckoutForm({
       }, 500);
     });
     return () => {
+      subscription.unsubscribe();
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     };
   }, [watch, saveDraft]);

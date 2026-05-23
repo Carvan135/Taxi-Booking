@@ -9,9 +9,18 @@ import {
   type SignInFormData,
   type SignUpFormData,
 } from "@/lib/validations";
+import {
+  upsertOperatorApplicationForUser,
+  type OperatorApplicationCore,
+} from "@/lib/actions/operatorOnboarding";
+import { operatorApplicationSchema } from "@/lib/validations/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types";
+
+export type SignUpInput = SignUpFormData & {
+  operatorApplication?: OperatorApplicationCore;
+};
 
 export type AuthActionResult = {
   success: boolean;
@@ -34,7 +43,7 @@ async function claimGuestBookingsIfCustomer(
 }
 
 export async function signUp(
-  data: SignUpFormData,
+  data: SignUpInput,
 ): Promise<AuthActionResult> {
   const parsed = signUpSchema.safeParse(data);
   if (!parsed.success) {
@@ -42,6 +51,14 @@ export async function signUp(
   }
 
   const { email, password, full_name, phone, role } = parsed.data;
+  const operatorApplication = data.operatorApplication;
+
+  if (role === "operator" && operatorApplication) {
+    const appParsed = operatorApplicationSchema.safeParse(operatorApplication);
+    if (!appParsed.success) {
+      return { success: false, error: formatZodError(appParsed.error) };
+    }
+  }
   const supabase = createClient();
 
   // Operators should be able to start onboarding immediately (no email confirmation gate).
@@ -92,6 +109,18 @@ export async function signUp(
 
     if (profileError) {
       return { success: false, error: profileError.message };
+    }
+
+    if (operatorApplication) {
+      const appResult = await upsertOperatorApplicationForUser(
+        supabase,
+        createdUser.id,
+        { ...operatorApplication, license_document_url: "" },
+        { requireLicense: false },
+      );
+      if (!appResult.success) {
+        return { success: false, error: appResult.error };
+      }
     }
 
     return { success: true };

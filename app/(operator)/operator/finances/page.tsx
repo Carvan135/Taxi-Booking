@@ -117,8 +117,6 @@ export default async function OperatorFinancesPage({
     .maybeSingle();
 
   let earningsRows: EarningsRow[] = [];
-  let earningsTotal = 0;
-  let earningsPaidTotal = 0;
   let summary = {
     availableTotal: 0,
     availableCount: 0,
@@ -169,11 +167,6 @@ export default async function OperatorFinancesPage({
         .order("completed_at", { ascending: false });
 
       earningsRows = (rows ?? []) as EarningsRow[];
-      for (const r of earningsRows) {
-        const p = earningsAmount(r);
-        earningsTotal += p;
-        if (r.payment_status === "paid") earningsPaidTotal += p;
-      }
     }
   }
 

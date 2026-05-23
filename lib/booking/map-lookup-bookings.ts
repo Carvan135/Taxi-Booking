@@ -8,7 +8,6 @@ import {
   type ServiceType,
 } from "@/lib/validations/enums";
 
-const PAYMENT_PAID = PAYMENT_STATUSES[1] satisfies PaymentStatus;
 const PAYMENT_UNPAID = PAYMENT_STATUSES[0] satisfies PaymentStatus;
 import type { CustomerBookingRow } from "@/types";
 import type { VehicleType } from "@/types";

@@ -33,17 +33,23 @@ export function OperatorDashboardSkeleton() {
           </div>
         </section>
         <section className="lg:col-span-2">
-          <div className="h-6 w-32 rounded bg-slate-200" />
+          <div className="h-6 w-28 rounded bg-slate-200" />
           <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div
-                key={i}
-                className="mb-3 flex justify-between border-b border-slate-100 pb-3 last:mb-0 last:border-0 last:pb-0"
-              >
-                <div className="h-4 w-20 rounded bg-slate-100" />
-                <div className="h-4 w-12 rounded bg-slate-200" />
-              </div>
-            ))}
+            <div className="h-4 w-full max-w-xs rounded bg-slate-100" />
+            <div className="mt-4 space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex gap-3 rounded-lg bg-slate-50 px-3 py-3"
+                >
+                  <div className="h-6 w-6 shrink-0 rounded-full bg-slate-200" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-4 w-40 rounded bg-slate-200" />
+                    <div className="h-3 w-full max-w-sm rounded bg-slate-100" />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       </div>

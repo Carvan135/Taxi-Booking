@@ -7,7 +7,10 @@ import {
 import Link from "next/link";
 import { ClearStripeReturnQuery } from "@/components/operator/ClearStripeReturnQuery";
 import { ConnectStripeButton } from "@/components/operator/ConnectStripeButton";
+import { OperatorDashboardSetupSteps } from "@/components/operator/OperatorDashboardSetupSteps";
 import { OperatorDashboardStatusBanner } from "@/components/operator/OperatorDashboardStatusBanner";
+import { ensureOperatorPriceRules } from "@/lib/booking/ensure-price-rules";
+import { evaluateOperatorSetupSteps } from "@/lib/operator/operator-setup-steps";
 import { StatCard } from "@/components/ui/StatCard";
 import { orPlaceholder } from "@/lib/format/display";
 import { createClient } from "@/lib/supabase/server";
@@ -111,13 +114,14 @@ export default async function OperatorDashboardPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: operator } = await supabase
-    .from("operators")
-    .select(
-      "id, business_name, status, stripe_onboarding_complete, stripe_payouts_enabled, stripe_connected_at",
-    )
-    .eq("user_id", user?.id ?? "")
-    .maybeSingle();
+  const [{ data: operator }, { data: profile }] = await Promise.all([
+    supabase.from("operators").select("*").eq("user_id", user?.id ?? "").maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("email, phone")
+      .eq("id", user?.id ?? "")
+      .maybeSingle(),
+  ]);
 
   const fromStripeReturn = stripeReturnSuccess(searchParams);
 
@@ -147,8 +151,44 @@ export default async function OperatorDashboardPage({
   let totalCustomers = 0;
   let recentRows: BookingListRow[] = [];
   const weeklyDayTotals: { label: string; amount: number; ymd: string }[] = [];
+  let hasBasePricing = false;
+  let priceRuleCount = 0;
+  let setupEvaluation = evaluateOperatorSetupSteps({
+    operator: rawOp,
+    profile: profile ?? null,
+    hasBasePricing: false,
+    priceRuleCount: 0,
+  });
 
   if (operatorId) {
+    if (status === "approved") {
+      try {
+        await ensureOperatorPriceRules(operatorId);
+      } catch {
+        // Non-fatal: setup step still prompts visit to pricing page
+      }
+    }
+
+    const [{ count: rulesCount }, { data: basePricing }] = await Promise.all([
+      supabase
+        .from("price_rules")
+        .select("id", { count: "exact", head: true })
+        .eq("operator_id", operatorId),
+      supabase
+        .from("operator_base_pricing")
+        .select("operator_id")
+        .eq("operator_id", operatorId)
+        .maybeSingle(),
+    ]);
+
+    hasBasePricing = Boolean(basePricing);
+    priceRuleCount = rulesCount ?? 0;
+    setupEvaluation = evaluateOperatorSetupSteps({
+      operator: rawOp,
+      profile: profile ?? null,
+      hasBasePricing,
+      priceRuleCount,
+    });
     const { count: todayCount } = await supabase
       .from("bookings")
       .select("id", { count: "exact", head: true })
@@ -206,40 +246,43 @@ export default async function OperatorDashboardPage({
 
     recentRows = (recent ?? []) as unknown as BookingListRow[];
 
-    const monday = mondayUtcOfWeekContaining(new Date());
-    const weekStart = utcYmd(monday);
-    const sunday = new Date(monday);
-    sunday.setUTCDate(sunday.getUTCDate() + 6);
-    const weekEnd = utcYmd(sunday);
+    if (setupEvaluation.allComplete) {
+      const monday = mondayUtcOfWeekContaining(new Date());
+      const weekStart = utcYmd(monday);
+      const sunday = new Date(monday);
+      sunday.setUTCDate(sunday.getUTCDate() + 6);
+      const weekEnd = utcYmd(sunday);
 
-    const { data: weekRows } = await supabase
-      .from("bookings")
-      .select("pickup_date, price")
-      .eq("operator_id", operatorId)
-      .gte("pickup_date", weekStart)
-      .lte("pickup_date", weekEnd)
-      .eq("status", "completed");
+      const { data: weekRows } = await supabase
+        .from("bookings")
+        .select("pickup_date, price")
+        .eq("operator_id", operatorId)
+        .gte("pickup_date", weekStart)
+        .lte("pickup_date", weekEnd)
+        .eq("status", "completed");
 
-    const byYmd = new Map<string, number>();
-    for (const row of weekRows ?? []) {
-      const key = row.pickup_date;
-      const prev = byYmd.get(key) ?? 0;
-      byYmd.set(key, prev + Number(row.price ?? 0));
-    }
+      const byYmd = new Map<string, number>();
+      for (const row of weekRows ?? []) {
+        const key = row.pickup_date;
+        const prev = byYmd.get(key) ?? 0;
+        byYmd.set(key, prev + Number(row.price ?? 0));
+      }
 
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setUTCDate(monday.getUTCDate() + i);
-      const ymd = utcYmd(d);
-      weeklyDayTotals.push({
-        label: WEEKDAY_LABELS[i],
-        ymd,
-        amount: byYmd.get(ymd) ?? 0,
-      });
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setUTCDate(monday.getUTCDate() + i);
+        const ymd = utcYmd(d);
+        weeklyDayTotals.push({
+          label: WEEKDAY_LABELS[i],
+          ymd,
+          amount: byYmd.get(ymd) ?? 0,
+        });
+      }
     }
   }
 
   const weekTotal = weeklyDayTotals.reduce((s, d) => s + d.amount, 0);
+  const showWeeklyRevenue = setupEvaluation.allComplete;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -431,28 +474,40 @@ export default async function OperatorDashboardPage({
         </section>
 
         <section className="lg:col-span-2">
-          <h2 className="text-lg font-semibold text-primary">Weekly revenue</h2>
-          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <ul className="space-y-3 text-sm">
-              {weeklyDayTotals.map(({ label, amount }) => (
-                <li
-                  key={label}
-                  className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-0 last:pb-0"
-                >
-                  <span className="text-content/80">{label}</span>
-                  <span className="font-medium tabular-nums text-primary">
-                    {formatMoney(amount)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 text-sm font-semibold">
-              <span className="text-primary">Total this week</span>
-              <span className="tabular-nums text-primary">
-                {formatMoney(weekTotal)}
-              </span>
+          <h2 className="text-lg font-semibold text-primary">
+            {showWeeklyRevenue ? "Weekly revenue" : "Get started"}
+          </h2>
+          {showWeeklyRevenue ? (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <ul className="space-y-3 text-sm">
+                {weeklyDayTotals.map(({ label, amount }) => (
+                  <li
+                    key={label}
+                    className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-0 last:pb-0"
+                  >
+                    <span className="text-content/80">{label}</span>
+                    <span className="font-medium tabular-nums text-primary">
+                      {formatMoney(amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 text-sm font-semibold">
+                <span className="text-primary">Total this week</span>
+                <span className="tabular-nums text-primary">
+                  {formatMoney(weekTotal)}
+                </span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-4">
+              <OperatorDashboardSetupSteps
+                steps={setupEvaluation.steps}
+                approved={status === "approved"}
+                payoutsEnabled={stripePayoutsEnabled}
+              />
+            </div>
+          )}
         </section>
       </div>
     </div>
