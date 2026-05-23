@@ -3,7 +3,7 @@
 import { Elements } from "@stripe/react-stripe-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookingStepper } from "@/components/booking/BookingStepper";
 import { BookingSummaryCard } from "@/components/booking/BookingSummaryCard";
 import {
@@ -11,6 +11,12 @@ import {
   stripeAppearance,
 } from "@/components/booking/PaymentCheckoutForm";
 import { buildQuoteTripFromSession } from "@/lib/booking/build-quote-trip";
+import { buildPaymentTripFingerprint } from "@/lib/booking/payment-trip-fingerprint";
+import {
+  clearPaymentSession,
+  loadPaymentSession,
+  savePaymentSession,
+} from "@/lib/booking/payment-session-storage";
 import { logQuoteSummaryClient, quoteDebugLogClient } from "@/lib/booking/quote-debug";
 import { quoteToDisplayBreakdown } from "@/lib/booking/quote";
 import type { BookingPriceBreakdown } from "@/lib/booking/pricing";
@@ -29,6 +35,7 @@ type PaymentIntentResponse = {
   commission_percentage: number;
   stripe_ready: boolean;
   quote: BookingQuote;
+  reused?: boolean;
 };
 
 export function PaymentStep() {
@@ -41,6 +48,7 @@ export function PaymentStep() {
   const [setupError, setSetupError] = useState<string | null>(null);
   const [isLoadingIntent, setIsLoadingIntent] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [intentGeneration, setIntentGeneration] = useState(0);
 
   const { data: profile } = useProfile();
 
@@ -64,7 +72,7 @@ export function PaymentStep() {
     });
   }, []);
 
-  useEffect(() => {
+  const setupPayment = useCallback(async () => {
     if (!trip?.selected_operator) return;
 
     const operator = trip.selected_operator;
@@ -76,54 +84,87 @@ export function PaymentStep() {
       return;
     }
 
-    let cancelled = false;
+    const fingerprint = buildPaymentTripFingerprint(
+      operator.operator_id,
+      quoteTrip,
+    );
+    const stored = loadPaymentSession();
+    const reuseId =
+      stored?.trip_fingerprint === fingerprint &&
+      stored.operator_id === operator.operator_id
+        ? stored.payment_intent_id
+        : undefined;
+
+    const supersedeId =
+      stored && stored.trip_fingerprint !== fingerprint
+        ? stored.payment_intent_id
+        : undefined;
+
     setIsLoadingIntent(true);
     setSetupError(null);
 
-    void fetch("/api/stripe/payment-intent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        operator_id: operator.operator_id,
-        trip: quoteTrip,
-      }),
-    })
-      .then(async (res) => {
-        const body = (await res.json()) as PaymentIntentResponse & {
-          error?: string;
-        };
-        if (!res.ok) {
-          throw new Error(body.error ?? "Could not start payment");
-        }
-        if (!cancelled) {
-          setClientSecret(body.client_secret);
-          setPaymentIntentId(body.payment_intent_id);
-          setStripeReady(body.stripe_ready);
-          setPricing(quoteToDisplayBreakdown(body.quote));
-          quoteDebugLogClient(
-            `payment intent for ${operator.business_name} — server calculation:`,
-          );
-          logQuoteSummaryClient(
-            `Payment: ${operator.business_name}`,
-            body.quote,
-          );
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setSetupError(
-            err instanceof Error ? err.message : "Payment setup failed",
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingIntent(false);
+    try {
+      const res = await fetch("/api/stripe/payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operator_id: operator.operator_id,
+          trip: quoteTrip,
+          reuse_payment_intent_id: reuseId,
+          supersede_payment_intent_id: supersedeId,
+        }),
       });
 
-    return () => {
-      cancelled = true;
-    };
+      const body = (await res.json()) as PaymentIntentResponse & {
+        error?: string;
+        details?: { code?: string };
+      };
+
+      if (!res.ok) {
+        throw new Error(body.error ?? "Could not start payment");
+      }
+
+      setClientSecret(body.client_secret);
+      setPaymentIntentId(body.payment_intent_id);
+      setStripeReady(body.stripe_ready);
+      setPricing(quoteToDisplayBreakdown(body.quote));
+
+      savePaymentSession({
+        payment_intent_id: body.payment_intent_id,
+        client_secret: body.client_secret,
+        trip_fingerprint: fingerprint,
+        operator_id: operator.operator_id,
+        total: body.total,
+        created_at: new Date().toISOString(),
+      });
+
+      quoteDebugLogClient(
+        `payment intent for ${operator.business_name} — server calculation:`,
+      );
+      logQuoteSummaryClient(`Payment: ${operator.business_name}`, body.quote);
+    } catch (err) {
+      setSetupError(
+        err instanceof Error ? err.message : "Payment setup failed",
+      );
+    } finally {
+      setIsLoadingIntent(false);
+    }
   }, [trip]);
+
+  useEffect(() => {
+    void setupPayment();
+  }, [setupPayment, intentGeneration]);
+
+  const refreshPaymentIntent = useCallback(() => {
+    const stored = loadPaymentSession();
+    if (stored) {
+      clearPaymentSession();
+    }
+    setClientSecret(null);
+    setPaymentIntentId(null);
+    setPricing(null);
+    setIntentGeneration((n) => n + 1);
+  }, []);
 
   const elementsOptions = useMemo(
     () =>
@@ -160,7 +201,17 @@ export function PaymentStep() {
       {setupError ? (
         <div className="mx-auto mt-8 max-w-lg rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-center text-sm text-red-800">
           {setupError}
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setSetupError(null);
+                refreshPaymentIntent();
+              }}
+              className="font-semibold text-secondary hover:underline"
+            >
+              Try again
+            </button>
             <Link href="/operators" className="font-semibold text-secondary hover:underline">
               ← Back to operators
             </Link>
@@ -177,7 +228,7 @@ export function PaymentStep() {
       {pricing && clientSecret && paymentIntentId && elementsOptions && stripePromise ? (
         <div className="mt-8 grid gap-6 lg:grid-cols-2 lg:gap-8">
           <BookingSummaryCard trip={trip} operator={operator} pricing={pricing} />
-          <Elements stripe={stripePromise} options={elementsOptions}>
+          <Elements stripe={stripePromise} options={elementsOptions} key={paymentIntentId}>
             <PaymentCheckoutForm
               trip={trip}
               pricing={pricing}
@@ -185,6 +236,7 @@ export function PaymentStep() {
               profile={profile}
               isAuthenticated={isAuthenticated}
               stripeReady={stripeReady}
+              onPriceMismatch={refreshPaymentIntent}
             />
           </Elements>
         </div>

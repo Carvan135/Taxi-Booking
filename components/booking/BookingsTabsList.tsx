@@ -23,6 +23,9 @@ type BookingsTabsListProps = {
   subtitle?: string;
   /** Allow cancel + contact actions (logged-in customer bookings page). */
   enableManageActions?: boolean;
+  /** Email used on guest lookup — enables cancel on unpaid bookings. */
+  lookupEmail?: string;
+  onUnpaidCancelled?: () => void;
 };
 
 export function BookingsTabsList({
@@ -30,8 +33,12 @@ export function BookingsTabsList({
   title = "My Bookings",
   subtitle = "View and manage your ride bookings",
   enableManageActions = false,
+  lookupEmail,
+  onUnpaidCancelled: onUnpaidCancelledProp,
 }: BookingsTabsListProps) {
   const router = useRouter();
+  const onUnpaidCancelled =
+    onUnpaidCancelledProp ?? (() => router.refresh());
   const cancelMutation = useCancelMyBooking();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -100,6 +107,8 @@ export function BookingsTabsList({
                   group={group}
                   showActions={tab === "upcoming"}
                   cancellingId={cancellingId}
+                  lookupEmail={lookupEmail}
+                  onUnpaidCancelled={onUnpaidCancelled}
                   onCancel={
                     enableManageActions
                       ? async (id) => {
@@ -166,11 +175,15 @@ function BookingGroupItem({
   showActions,
   onCancel,
   cancellingId,
+  lookupEmail,
+  onUnpaidCancelled,
 }: {
   group: BookingDisplayGroup;
   showActions: boolean;
   onCancel?: (id: string) => void;
   cancellingId: string | null;
+  lookupEmail?: string;
+  onUnpaidCancelled?: () => void;
 }) {
   if (group.kind === "return") {
     return (
@@ -179,6 +192,8 @@ function BookingGroupItem({
         showActions={showActions}
         onCancel={onCancel}
         cancellingId={cancellingId}
+        lookupEmail={lookupEmail}
+        onUnpaidCancelled={onUnpaidCancelled}
       />
     );
   }
@@ -189,6 +204,8 @@ function BookingGroupItem({
       showActions={showActions}
       onCancel={onCancel}
       cancellingId={cancellingId}
+      lookupEmail={lookupEmail}
+      onUnpaidCancelled={onUnpaidCancelled}
     />
   );
 }

@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { BookingCompletionPanel } from "@/components/booking/BookingCompletionPanel";
 import { BookingReviewPanel } from "@/components/booking/BookingReviewPanel";
-import { formatBookingLanguage } from "@/lib/booking/language-display";
+import { formatBookingLuggage } from "@/lib/booking/luggage-display";
 import { BookingStatusBadge } from "@/components/booking/BookingStatusBadge";
 import { BookingStatusTimeline } from "@/components/booking/BookingStatusTimeline";
+import { UnpaidBookingBanner } from "@/components/booking/UnpaidBookingBanner";
 import {
   canCustomerReviewBooking,
   mapBookingReviewJoin,
@@ -59,7 +60,6 @@ export default async function CustomerBookingDetailPage({ params }: PageProps) {
     operator_id: booking.operator_id,
     review,
   });
-
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <Link
@@ -99,17 +99,17 @@ export default async function CustomerBookingDetailPage({ params }: PageProps) {
             £{Number(booking.price).toFixed(2)}
           </p>
         ) : null}
-        {booking.language ? (
-          <div>
-            <p className="text-xs font-semibold uppercase text-slate-500">
-              Preferred language
-            </p>
-            <p className="mt-1 text-content">
-              {formatBookingLanguage(booking.language)}
-            </p>
-          </div>
-        ) : null}
+        <div>
+          <p className="text-xs font-semibold uppercase text-slate-500">
+            Luggage
+          </p>
+          <p className="mt-1 text-content">
+            {formatBookingLuggage(booking.luggage)}
+          </p>
+        </div>
       </div>
+
+      <UnpaidBookingBanner booking={booking} />
 
       <div className="mt-6 space-y-4">
         <BookingCompletionPanel booking={booking} />

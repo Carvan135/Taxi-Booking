@@ -104,7 +104,7 @@ export type Booking = {
   pickup_date: string;
   pickup_time: string;
   passengers: number;
-  language: string;
+  luggage: number;
   vehicle_type: string | null;
   price: number | null;
   status: BookingStatus;

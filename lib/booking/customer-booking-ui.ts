@@ -1,5 +1,12 @@
+import { canResumeBookingPayment } from "@/lib/booking/booking-payment";
 import { BOOKING_STATUS, COMPLETION_STATUS } from "@/lib/validations/enums";
 import type { Booking } from "@/types";
+
+export {
+  bookingNeedsPayment,
+  canCancelUnpaidBooking,
+  canResumeBookingPayment,
+} from "@/lib/booking/booking-payment";
 
 /** True when the customer may cancel from the app (also enforced in DB RPC). */
 export function canCustomerCancelBooking(

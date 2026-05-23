@@ -7,6 +7,8 @@ type ReturnTripGroupProps = {
   showActions?: boolean;
   onCancel?: (bookingId: string) => void;
   cancellingId?: string | null;
+  lookupEmail?: string;
+  onUnpaidCancelled?: () => void;
 };
 
 export function ReturnTripGroup({
@@ -14,6 +16,8 @@ export function ReturnTripGroup({
   showActions = false,
   onCancel,
   cancellingId = null,
+  lookupEmail,
+  onUnpaidCancelled,
 }: ReturnTripGroupProps) {
   const outbound = legs.find((l) => l.leg === BOOKING_LEG.outbound) ?? legs[0]!;
   const returnLeg = legs.find((l) => l.leg === BOOKING_LEG.return);
@@ -42,6 +46,8 @@ export function ReturnTripGroup({
               showActions={showActions}
               onCancel={onCancel}
               cancellingId={cancellingId}
+              lookupEmail={lookupEmail}
+              onUnpaidCancelled={onUnpaidCancelled}
             />
           );
         })}

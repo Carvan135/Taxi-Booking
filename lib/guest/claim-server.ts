@@ -44,10 +44,11 @@ export async function claimBookingsForAuthenticatedUser(): Promise<ClaimBookings
   }
 
   const admin = createAdminClient();
+  const normalizedEmail = email.trim();
   const { data, error } = await admin
     .from("bookings")
     .update({ customer_id: user.id })
-    .ilike("customer_email", email)
+    .ilike("customer_email", normalizedEmail)
     .is("customer_id", null)
     .select("id");
 

@@ -3,12 +3,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
-import { signUp } from "@/lib/auth/actions";
 import { safeInternalRedirectPath } from "@/lib/auth/routes";
+import { guestSignUpAndClaimBookingsClient } from "@/lib/guest/account";
+import { guestSession } from "@/lib/guest/session";
 import {
   customerSignUpFormSchema,
   type CustomerSignUpFormInput,
@@ -19,6 +21,7 @@ const authCardClass =
 
 function CustomerSignupForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const redirectParam = safeInternalRedirectPath(searchParams.get("redirect"));
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -26,6 +29,7 @@ function CustomerSignupForm() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CustomerSignUpFormInput>({
     resolver: zodResolver(customerSignUpFormSchema),
@@ -37,26 +41,33 @@ function CustomerSignupForm() {
     },
   });
 
+  useEffect(() => {
+    const guest = guestSession.get();
+    if (guest?.email) {
+      setValue("email", guest.email);
+    }
+  }, [setValue]);
+
   const onSubmit = handleSubmit(async (data) => {
     setSubmitError(null);
-    const result = await signUp({
-      email: data.email,
-      password: data.password,
-      full_name: data.full_name,
-      phone: undefined,
-      role: "customer",
-    });
+
+    const result = await guestSignUpAndClaimBookingsClient(
+      {
+        email: data.email,
+        password: data.password,
+        full_name: data.full_name,
+      },
+      queryClient,
+    );
 
     if (!result.success) {
       setSubmitError(result.error ?? "Could not create your account.");
       return;
     }
 
-    const defaultAfterLogin = "/bookings";
-    const loginUrl = redirectParam
-      ? `/login?registered=true&redirect=${encodeURIComponent(redirectParam)}`
-      : `/login?registered=true&redirect=${encodeURIComponent(defaultAfterLogin)}`;
-    router.push(loginUrl);
+    const dest = redirectParam ?? "/bookings";
+    router.push(dest);
+    router.refresh();
   });
 
   return (
@@ -68,6 +79,10 @@ function CustomerSignupForm() {
           </h1>
           <p className="mt-1 text-sm text-content/70">
             Book rides in seconds — just name, email, and password.
+          </p>
+          <p className="mt-2 text-xs text-content/60">
+            Used guest checkout before? Sign up with the same email and your
+            past bookings appear in My Bookings.
           </p>
         </div>
 
@@ -129,7 +144,7 @@ function CustomerSignupForm() {
             className="w-full"
             loading={isSubmitting}
           >
-            Continue
+            Create account
           </Button>
         </form>
 

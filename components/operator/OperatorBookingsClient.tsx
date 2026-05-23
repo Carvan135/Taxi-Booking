@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Calendar,
-  Languages,
+  Luggage,
   Loader2,
   Mail,
   MapPin,
@@ -15,7 +15,7 @@ import { BookingStatusBadge } from "@/components/booking/BookingStatusBadge";
 import { StartJourneyConfirmModal } from "@/components/operator/StartJourneyConfirmModal";
 import { useStartJourneyAction } from "@/components/operator/useStartJourneyAction";
 import { Button } from "@/components/ui/Button";
-import { formatBookingLanguage } from "@/lib/booking/language-display";
+import { formatBookingLuggage } from "@/lib/booking/luggage-display";
 import { bookingKeys } from "@/hooks/queries/keys";
 import { useOperatorBookings } from "@/hooks/queries/useBookings";
 import {
@@ -167,10 +167,10 @@ function OperatorBookingCard({
           {booking.service_type}
           {booking.vehicle_type ? ` · ${booking.vehicle_type}` : ""}
         </p>
-        {booking.language ? (
+        {(booking.luggage ?? 0) > 0 ? (
           <p className="flex items-center gap-2 text-content/70">
-            <Languages className="h-4 w-4 shrink-0" aria-hidden />
-            {formatBookingLanguage(booking.language)}
+            <Luggage className="h-4 w-4 shrink-0" aria-hidden />
+            {formatBookingLuggage(booking.luggage)}
           </p>
         ) : null}
       </div>

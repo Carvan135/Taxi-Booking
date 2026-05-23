@@ -5,8 +5,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { BookingStatusBadge } from "@/components/booking/BookingStatusBadge";
 import { OperatorContactModal } from "@/components/booking/OperatorContactModal";
+import { CancelBookingConfirmModal } from "@/components/booking/CancelBookingConfirmModal";
+import { CancelUnpaidBookingButton } from "@/components/booking/CancelUnpaidBookingButton";
 import {
+  canCancelUnpaidBooking,
   canCustomerCancelBooking,
+  canResumeBookingPayment,
   showCustomerJourneyGreeting,
 } from "@/lib/booking/customer-booking-ui";
 import { canCustomerReviewBooking } from "@/lib/booking/customer-review";
@@ -27,6 +31,9 @@ type BookingCardProps = {
   showActions?: boolean;
   onCancel?: (bookingId: string) => void;
   cancellingId?: string | null;
+  /** Guest lookup email — required to cancel unpaid bookings without an account. */
+  lookupEmail?: string;
+  onUnpaidCancelled?: () => void;
 };
 
 function formatPickupLine(booking: CustomerBookingRow): string {
@@ -63,9 +70,12 @@ export function BookingCard({
   showActions = false,
   onCancel,
   cancellingId = null,
+  lookupEmail,
+  onUnpaidCancelled,
 }: BookingCardProps) {
   const [copied, setCopied] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
 
   async function copyReference() {
     try {
@@ -87,6 +97,11 @@ export function BookingCard({
     canCustomerCancelBooking(booking);
   const showJourneyGreeting = showCustomerJourneyGreeting(booking);
   const canReview = !showActions && canCustomerReviewBooking(booking);
+  const needsPayment = canResumeBookingPayment(booking);
+  const canCancelUnpaid = needsPayment && canCancelUnpaidBooking(booking);
+  const payHref = booking.customer_id
+    ? `/bookings/${booking.id}/pay`
+    : `/complete-payment?id=${encodeURIComponent(booking.id)}`;
 
   return (
     <article
@@ -199,6 +214,31 @@ export function BookingCard({
         </p>
       ) : null}
 
+      {needsPayment ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-950">Payment required</p>
+          <p className="mt-1 text-xs text-amber-900/90">
+            This booking is not confirmed until payment is completed.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <Link
+              href={payHref}
+              className="text-sm font-semibold text-secondary hover:underline"
+            >
+              Complete payment →
+            </Link>
+            {canCancelUnpaid ? (
+              <CancelUnpaidBookingButton
+                bookingId={booking.id}
+                bookingReference={booking.reference}
+                customerEmail={lookupEmail ?? booking.customer_email}
+                onCancelled={onUnpaidCancelled}
+              />
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {showActions || canReview ? (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {showActions ? (
@@ -232,16 +272,7 @@ export function BookingCard({
                 className="flex-1 border-slate-300 font-semibold text-content"
                 loading={cancellingId === booking.id}
                 disabled={cancellingId !== null && cancellingId !== booking.id}
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      "Cancel this booking? This cannot be undone.",
-                    )
-                  ) {
-                    return;
-                  }
-                  onCancel?.(booking.id);
-                }}
+                onClick={() => setCancelConfirmOpen(true)}
               >
                 Cancel booking
               </Button>
@@ -276,6 +307,18 @@ export function BookingCard({
           bookingReference={booking.reference}
         />
       ) : null}
+
+      <CancelBookingConfirmModal
+        open={cancelConfirmOpen}
+        onClose={() => setCancelConfirmOpen(false)}
+        loading={cancellingId === booking.id}
+        bookingReference={booking.reference}
+        onConfirm={() => {
+          void Promise.resolve(onCancel?.(booking.id)).finally(() => {
+            setCancelConfirmOpen(false);
+          });
+        }}
+      />
     </article>
   );
 }

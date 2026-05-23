@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isUkPhoneNumber } from "./auth";
-import { BOOKING_LANGUAGES } from "./booking-languages";
+import { MAX_BOOKING_LUGGAGE } from "@/lib/booking/luggage-display";
 import { RULE_TYPES, SERVICE_TYPES } from "./enums";
 
 const TIME_HH_MM_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -63,9 +63,11 @@ export const oneWayBookingSchema = z.object({
     .min(1, "At least 1 passenger")
     .max(16, "Maximum 16 passengers"),
   service_type: z.enum(SERVICE_TYPES),
-  language: z.enum(BOOKING_LANGUAGES, {
-    message: "Select a preferred language",
-  }),
+  luggage: z.coerce
+    .number()
+    .int("Luggage must be a whole number")
+    .min(0, "Luggage cannot be negative")
+    .max(MAX_BOOKING_LUGGAGE, `Maximum ${MAX_BOOKING_LUGGAGE} pieces`),
   notes: z
     .string()
     .max(500, "Notes must be 500 characters or fewer")

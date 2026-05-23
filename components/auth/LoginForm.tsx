@@ -12,7 +12,6 @@ import { signIn } from "@/lib/auth/actions";
 import { safeInternalRedirectPath } from "@/lib/auth/routes";
 import {
   claimGuestBookings,
-  shouldClaimBookingsAfterAuth,
 } from "@/lib/guest/claim-bookings-client";
 import { signInSchema, type SignInFormData } from "@/lib/validations";
 
@@ -56,11 +55,7 @@ export function LoginForm({ variant = "rider" }: LoginFormProps) {
       return;
     }
 
-    if (
-      variant === "rider" &&
-      result.role === "customer" &&
-      shouldClaimBookingsAfterAuth(redirectParam)
-    ) {
+    if (variant === "rider" && result.role === "customer") {
       await claimGuestBookings(queryClient);
     }
 
@@ -110,7 +105,8 @@ export function LoginForm({ variant = "rider" }: LoginFormProps) {
             className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm text-emerald-900"
             role="status"
           >
-            Registration successful. You can sign in below.
+            Registration successful. Sign in below — guest bookings with this
+            email will link to your account automatically.
           </div>
         ) : null}
 

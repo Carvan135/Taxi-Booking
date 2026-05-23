@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { BOOKING_LANGUAGES } from "@/lib/validations/booking-languages";
+import { MAX_BOOKING_LUGGAGE } from "@/lib/booking/luggage-display";
 import { BOOKING_TYPES, SERVICE_TYPES } from "@/lib/validations/enums";
 
 
@@ -21,7 +21,7 @@ export const tripSessionSchema = z.object({
 
   service_type: z.enum(SERVICE_TYPES),
 
-  language: z.enum(BOOKING_LANGUAGES),
+  luggage: z.number().int().min(0).max(MAX_BOOKING_LUGGAGE),
 
   notes: z.string().optional(),
 
@@ -150,11 +150,10 @@ export const quotesBatchBodySchema = z.object({
 
 
 export const paymentIntentBodySchema = z.object({
-
   operator_id: z.string().uuid(),
-
   trip: quoteTripSchema,
-
+  reuse_payment_intent_id: z.string().min(1).optional(),
+  supersede_payment_intent_id: z.string().min(1).optional(),
 });
 
 
@@ -191,7 +190,7 @@ export const createBookingBodySchema = z
 
     service_type: z.enum(SERVICE_TYPES),
 
-    language: z.enum(BOOKING_LANGUAGES),
+    luggage: z.number().int().min(0).max(MAX_BOOKING_LUGGAGE),
 
     price: z.number().positive(),
 

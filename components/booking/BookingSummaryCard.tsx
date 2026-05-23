@@ -1,5 +1,5 @@
-import { Car, Languages, MapPin, Star, Users } from "lucide-react";
-import { formatBookingLanguage } from "@/lib/booking/language-display";
+import { Car, Luggage, MapPin, Star, Users } from "lucide-react";
+import { formatBookingLuggage } from "@/lib/booking/luggage-display";
 import { TripLocationBadges } from "@/components/booking/TripLocationBadges";
 import type { BookingPriceBreakdown } from "@/lib/booking/pricing";
 import {
@@ -66,9 +66,9 @@ export function BookingSummaryCard({
           value={SERVICE_LABELS[trip.service_type]}
         />
         <SummaryRow
-          icon={Languages}
-          label="Language"
-          value={formatBookingLanguage(trip.language ?? "english")}
+          icon={Luggage}
+          label="Luggage"
+          value={formatBookingLuggage(trip.luggage ?? 0)}
         />
       </div>
 

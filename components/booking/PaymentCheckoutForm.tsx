@@ -9,11 +9,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { PaymentTrustBadges } from "@/components/booking/PaymentTrustBadges";
 import { BOOK_TRIP_INPUT_CLASS } from "@/components/booking/booking-form-styles";
 import type { BookingPriceBreakdown } from "@/lib/booking/pricing";
+import { clearPaymentSession } from "@/lib/booking/payment-session-storage";
 import {
   clearTaxibookBooking,
   saveConfirmationReference,
@@ -21,6 +22,12 @@ import {
   saveTaxibookGuestSession,
   type TaxibookBookingSession,
 } from "@/lib/booking/session";
+import {
+  finalizeBookingAfterPayment,
+  pollPaymentIntentStatus,
+  tryFinalizeFromSucceededIntent,
+} from "@/lib/booking/payment-finalize-client";
+import type { CreateBookingBody } from "@/lib/booking/insert-pending-bookings";
 import {
   guestDetailsSchema,
   type GuestDetailsFormInput,
@@ -46,6 +53,7 @@ type PaymentCheckoutFormProps = {
   profile: Profile | null | undefined;
   isAuthenticated: boolean;
   stripeReady?: boolean;
+  onPriceMismatch?: () => void;
 };
 
 export function PaymentCheckoutForm({
@@ -55,17 +63,24 @@ export function PaymentCheckoutForm({
   profile,
   isAuthenticated,
   stripeReady = true,
+  onPriceMismatch,
 }: PaymentCheckoutFormProps) {
   const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [isPaying, setIsPaying] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recoveryAttemptedRef = useRef(false);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    getValues,
     formState: { errors },
   } = useForm<GuestDetailsFormInput>({
     resolver: zodResolver(guestDetailsSchema),
@@ -85,6 +100,166 @@ export function PaymentCheckoutForm({
     });
   }, [profile, reset]);
 
+  const buildCreateBody = useCallback(
+    (customer: GuestDetailsFormInput): CreateBookingBody | null => {
+      const operator = trip.selected_operator;
+      if (!operator) return null;
+      return {
+        payment_intent_id: paymentIntentId,
+        operator_id: operator.operator_id,
+        customer_name: customer.customer_name,
+        customer_email: customer.customer_email,
+        customer_phone: customer.customer_phone,
+        booking_type: trip.booking_type,
+        pickup_address: trip.pickup_address,
+        dropoff_address: trip.dropoff_address,
+        pickup_date: trip.pickup_date,
+        pickup_time: trip.pickup_time,
+        return_date: trip.return_date,
+        return_time: trip.return_time,
+        passengers: trip.passengers,
+        service_type: trip.service_type,
+        luggage: trip.luggage ?? 0,
+        price: pricing.total,
+        platform_fee: pricing.platformFee,
+        operator_payout: pricing.baseFareTotal,
+        notes: trip.notes,
+        customer_id: profile?.id ?? null,
+      };
+    },
+    [trip, paymentIntentId, pricing, profile?.id],
+  );
+
+  const completeBooking = useCallback(
+    async (customer: GuestDetailsFormInput) => {
+      const body = buildCreateBody(customer);
+      if (!body) throw new Error("No operator selected");
+
+      const result = await finalizeBookingAfterPayment(body);
+
+      if (
+        !result.ok &&
+        result.details?.code === "amount_mismatch" &&
+        onPriceMismatch
+      ) {
+        onPriceMismatch();
+        throw new Error(
+          "The price was updated. Please review the new total and pay again.",
+        );
+      }
+
+      if (!result.ok) {
+        throw new Error(result.error ?? "Could not save your booking");
+      }
+
+      const reference = result.booking_reference ?? "";
+      if (!isAuthenticated && result.booking_id) {
+        saveTaxibookGuestSession({
+          bookingId: result.booking_id,
+          email: customer.customer_email,
+          reference,
+        });
+      }
+
+      saveConfirmationReference(reference);
+      saveConfirmationSnapshot({
+        reference,
+        total: pricing.total,
+        trip,
+      });
+      clearTaxibookBooking();
+      clearPaymentSession();
+      router.push(`/confirmation?ref=${encodeURIComponent(reference)}`);
+    },
+    [
+      buildCreateBody,
+      isAuthenticated,
+      onPriceMismatch,
+      pricing.total,
+      router,
+      trip,
+    ],
+  );
+
+  const saveDraft = useCallback(
+    async (customer: GuestDetailsFormInput) => {
+      const body = buildCreateBody(customer);
+      if (!body) return false;
+
+      const res = await fetch("/api/bookings/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const resBody = (await res.json()) as {
+          error?: string;
+          details?: { code?: string };
+        };
+        if (resBody.details?.code === "amount_mismatch" && onPriceMismatch) {
+          onPriceMismatch();
+          setPaymentError(
+            "The price was updated. Please review the new total before paying.",
+          );
+          return false;
+        }
+        setPaymentError(resBody.error ?? "Could not save your booking details");
+        return false;
+      }
+      return true;
+    },
+    [buildCreateBody, onPriceMismatch],
+  );
+
+  useEffect(() => {
+    if (recoveryAttemptedRef.current) return;
+    recoveryAttemptedRef.current = true;
+
+    void (async () => {
+      const status = await pollPaymentIntentStatus(paymentIntentId);
+      if (!status?.can_finalize) return;
+
+      const parsed = guestDetailsSchema.safeParse(getValues());
+      if (!parsed.success) return;
+
+      const body = buildCreateBody(parsed.data);
+      if (!body) return;
+
+      try {
+        const result = await tryFinalizeFromSucceededIntent(body);
+        if (result.ok && result.booking_reference) {
+          await completeBooking(parsed.data);
+        }
+      } catch {
+        /* user can submit manually */
+      }
+    })();
+  }, [paymentIntentId, buildCreateBody, getValues, completeBooking]);
+
+  useEffect(() => {
+    const subscription = watch((values) => {
+      const parsed = guestDetailsSchema.safeParse(values);
+      if (!parsed.success) {
+        setDraftReady(false);
+        return;
+      }
+      if (draftTimerRef.current) {
+        clearTimeout(draftTimerRef.current);
+      }
+      draftTimerRef.current = setTimeout(() => {
+        setDraftSaving(true);
+        void saveDraft(parsed.data).then((ok) => {
+          setDraftReady(ok);
+          setDraftSaving(false);
+        });
+      }, 500);
+    });
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [watch, saveDraft]);
+
   const onSubmit = handleSubmit(async (customer) => {
     if (!stripe || !elements) {
       setPaymentError("Payment is still loading. Please wait a moment.");
@@ -92,6 +267,13 @@ export function PaymentCheckoutForm({
     }
 
     setPaymentError(null);
+
+    if (!draftReady) {
+      const ok = await saveDraft(customer);
+      if (!ok) return;
+      setDraftReady(true);
+    }
+
     setIsPaying(true);
 
     const { error: submitError } = await stripe.confirmPayment({
@@ -108,67 +290,7 @@ export function PaymentCheckoutForm({
     }
 
     try {
-      const operator = trip.selected_operator;
-      if (!operator) {
-        throw new Error("No operator selected");
-      }
-
-      const res = await fetch("/api/bookings/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payment_intent_id: paymentIntentId,
-          operator_id: operator.operator_id,
-          customer_name: customer.customer_name,
-          customer_email: customer.customer_email,
-          customer_phone: customer.customer_phone,
-          booking_type: trip.booking_type,
-          pickup_address: trip.pickup_address,
-          dropoff_address: trip.dropoff_address,
-          pickup_date: trip.pickup_date,
-          pickup_time: trip.pickup_time,
-          return_date: trip.return_date,
-          return_time: trip.return_time,
-          passengers: trip.passengers,
-          service_type: trip.service_type,
-          language: trip.language ?? "english",
-          price: pricing.total,
-          platform_fee: pricing.platformFee,
-          operator_payout: pricing.baseFareTotal,
-          notes: trip.notes,
-          customer_id: profile?.id ?? null,
-        }),
-      });
-
-      const body = (await res.json()) as {
-        success?: boolean;
-        booking_reference?: string;
-        group_reference?: string;
-        booking_id?: string;
-        error?: string;
-      };
-
-      if (!res.ok) {
-        throw new Error(body.error ?? "Could not save your booking");
-      }
-
-      const reference = body.booking_reference ?? "";
-      if (!isAuthenticated && body.booking_id) {
-        saveTaxibookGuestSession({
-          bookingId: body.booking_id,
-          email: customer.customer_email,
-          reference,
-        });
-      }
-
-      saveConfirmationReference(reference);
-      saveConfirmationSnapshot({
-        reference,
-        total: pricing.total,
-        trip,
-      });
-      clearTaxibookBooking();
-      router.push(`/confirmation?ref=${encodeURIComponent(reference)}`);
+      await completeBooking(customer);
     } catch (err) {
       setPaymentError(
         err instanceof Error ? err.message : "Booking could not be saved",
@@ -202,7 +324,7 @@ export function PaymentCheckoutForm({
             >
               sign in to your account
             </Link>{" "}
-            to pre-fill your details.
+            to pre-fill your details and see this booking in My bookings after payment.
           </p>
         </div>
       ) : null}
@@ -287,10 +409,24 @@ export function PaymentCheckoutForm({
         ) : null}
       </div>
 
+      {draftSaving ? (
+        <p className="mt-4 text-center text-xs text-content/55">
+          Saving your booking…
+        </p>
+      ) : draftReady ? (
+        <p className="mt-4 text-center text-xs text-emerald-700">
+          Booking saved — complete payment below.
+        </p>
+      ) : (
+        <p className="mt-4 text-center text-xs text-content/55">
+          Enter your details to save the booking before paying.
+        </p>
+      )}
+
       <button
         type="submit"
-        disabled={!stripe || !elements || isPaying}
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3.5 text-sm font-semibold text-secondary-foreground shadow-md shadow-secondary/20 transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={!stripe || !elements || isPaying || draftSaving}
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3.5 text-sm font-semibold text-secondary-foreground shadow-md shadow-secondary/20 transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPaying ? (
           <>

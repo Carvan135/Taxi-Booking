@@ -253,7 +253,7 @@ export default async function OperatorDashboardPage({
     const { data: completionRows } = await supabase
       .from("bookings")
       .select(
-        "id, reference, pickup_address, dropoff_address, pickup_date, pickup_time, status, completion_status, auto_complete_at, journey_started_at, language, customer_name, payment_status",
+        "id, reference, pickup_address, dropoff_address, pickup_date, pickup_time, status, completion_status, auto_complete_at, journey_started_at, luggage, customer_name, payment_status",
       )
       .eq("operator_id", operatorId)
       .eq("status", BOOKING_STATUS.confirmed);
@@ -272,7 +272,7 @@ export default async function OperatorDashboardPage({
         completion_status: (row.completion_status as string) ?? "none",
         auto_complete_at: row.auto_complete_at as string | null,
         journey_started_at: row.journey_started_at as string | null,
-        language: (row.language as string | null) ?? "english",
+        luggage: Number(row.luggage ?? 0),
         customer_name: row.customer_name as string | null,
       };
       if (

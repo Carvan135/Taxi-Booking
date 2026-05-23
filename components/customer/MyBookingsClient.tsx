@@ -9,6 +9,7 @@ import {
   Loader2,
   MapPin,
 } from "lucide-react";
+import { CancelBookingConfirmModal } from "@/components/booking/CancelBookingConfirmModal";
 import { Button } from "@/components/ui/Button";
 import {
   useCancelMyBooking,
@@ -94,6 +95,7 @@ function BookingCard({
   const showActions = tab === "upcoming";
   const canCancel = canCustomerCancelBooking(booking);
   const showJourneyGreeting = showCustomerJourneyGreeting(booking);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
 
   return (
     <article className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm sm:p-6">
@@ -177,16 +179,7 @@ function BookingCard({
                 className="flex-1 border-slate-300 font-semibold text-content"
                 loading={cancellingId === booking.id}
                 disabled={cancellingId !== null}
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      "Cancel this booking? This cannot be undone.",
-                    )
-                  ) {
-                    return;
-                  }
-                  onCancel(booking.id);
-                }}
+                onClick={() => setCancelConfirmOpen(true)}
               >
                 Cancel booking
               </Button>
@@ -214,6 +207,18 @@ function BookingCard({
           </div>
         </>
       )}
+
+      <CancelBookingConfirmModal
+        open={cancelConfirmOpen}
+        onClose={() => setCancelConfirmOpen(false)}
+        loading={cancellingId === booking.id}
+        bookingReference={booking.reference}
+        onConfirm={() => {
+          void Promise.resolve(onCancel(booking.id)).finally(() => {
+            setCancelConfirmOpen(false);
+          });
+        }}
+      />
     </article>
   );
 }

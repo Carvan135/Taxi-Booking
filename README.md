@@ -114,6 +114,17 @@ SELECT vault.create_secret('YOUR_SUPABASE_ANON_KEY', 'publishable_key', 'anon ke
 5. Confirm job **carvan-auto-complete** exists: `SELECT * FROM cron.job;`
 6. Manual test: `supabase functions invoke auto-complete --no-verify-jwt` (local) or invoke from Dashboard → Edge Functions.
 
+## Supabase expire-pending cron
+
+Abandoned unpaid bookings (`pending` + `unpaid`, older than 7 days) are cancelled by **pg_cron** calling a Postgres function. No Edge Function or Netlify cron.
+
+1. Apply migrations (includes `028_payment_edge_cases.sql` and `029_expire_pending_cron.sql`).
+2. Enable extension **pg_cron** (Database → Extensions) if not already enabled for auto-complete.
+3. Confirm job **carvan-expire-pending** exists: `SELECT jobid, jobname, schedule FROM cron.job;`
+4. Manual test: `SELECT public.expire_stale_pending_bookings(interval '7 days');` (returns number of rows cancelled).
+
+Schedule: daily at **03:00 UTC**. To change it, update the job in SQL Editor or edit `029_expire_pending_cron.sql` before applying.
+
 ## Configuration notes
 
 - **Next.js config:** this repo uses **`next.config.mjs`** (Next.js 14 does not load `next.config.ts`; settings match strict mode, image domains, and production-oriented defaults). Upgrade to Next.js 15+ if you want native `next.config.ts`.

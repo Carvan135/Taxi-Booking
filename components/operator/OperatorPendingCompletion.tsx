@@ -5,7 +5,7 @@ import { useState, type ReactNode } from "react";
 import { StartJourneyConfirmModal } from "@/components/operator/StartJourneyConfirmModal";
 import { useStartJourneyAction } from "@/components/operator/useStartJourneyAction";
 import { Button } from "@/components/ui/Button";
-import { formatBookingLanguage } from "@/lib/booking/language-display";
+import { formatBookingLuggage } from "@/lib/booking/luggage-display";
 import type { Booking } from "@/types";
 
 export type OperatorCompletionBooking = {
@@ -19,7 +19,7 @@ export type OperatorCompletionBooking = {
   completion_status: string;
   auto_complete_at: string | null;
   journey_started_at: string | null;
-  language: string | null;
+  luggage: number;
   customer_name: string | null;
 };
 
@@ -49,8 +49,8 @@ function TripCard({
       <p className="text-sm text-content/70">
         {booking.customer_name ?? "Customer"} · {booking.pickup_date}{" "}
         {formatTime(booking.pickup_time)}
-        {booking.language ? (
-          <> · {formatBookingLanguage(booking.language)}</>
+        {(booking.luggage ?? 0) > 0 ? (
+          <> · {formatBookingLuggage(booking.luggage)}</>
         ) : null}
       </p>
       <p className="mt-2 text-sm text-content">

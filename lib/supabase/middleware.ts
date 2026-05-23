@@ -25,6 +25,7 @@ function isPublicPath(pathname: string): boolean {
     "/operators",
     "/payment",
     "/confirmation",
+    "/complete-payment",
     "/bookings/lookup",
     "/contact",
     "/faq",

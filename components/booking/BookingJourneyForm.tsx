@@ -6,7 +6,7 @@ import {
   Car,
   ChevronDown,
   Clock,
-  Languages,
+  Luggage,
   MapPin,
   Users,
 } from "lucide-react";
@@ -18,11 +18,7 @@ import { BookingStepper } from "@/components/booking/BookingStepper";
 import { calculateTripDistance } from "@/lib/booking/route-calculator";
 import type { BookingPlace } from "@/lib/booking/booking-session-types";
 import { geocode, type GeoPlace } from "@/lib/maps/geoapify";
-import {
-  BOOKING_LANGUAGE_LABELS,
-  BOOKING_LANGUAGES,
-  DEFAULT_BOOKING_LANGUAGE,
-} from "@/lib/validations/booking-languages";
+import { MAX_BOOKING_LUGGAGE } from "@/lib/booking/luggage-display";
 import { SERVICE_TYPES } from "@/lib/validations/enums";
 import {
   BOOK_TRIP_INPUT_CLASS,
@@ -54,7 +50,7 @@ const defaultValues: BookingFormValues = {
   pickup_time: "",
   passengers: 1,
   service_type: "standard",
-  language: DEFAULT_BOOKING_LANGUAGE,
+  luggage: 0,
   notes: "",
   return_date: "",
   return_time: "",
@@ -141,7 +137,7 @@ export function BookingJourneyForm({ variant = "page" }: BookingJourneyFormProps
     setValue("pickup_time", stored.pickup_time);
     setValue("passengers", stored.passengers);
     setValue("service_type", stored.service_type);
-    setValue("language", stored.language ?? DEFAULT_BOOKING_LANGUAGE);
+    setValue("luggage", stored.luggage ?? 0);
     setValue("notes", stored.notes ?? "");
     if (stored.return_date) setValue("return_date", stored.return_date);
     if (stored.return_time) setValue("return_time", stored.return_time);
@@ -224,7 +220,7 @@ export function BookingJourneyForm({ variant = "page" }: BookingJourneyFormProps
         pickup_time: data.pickup_time,
         passengers: data.passengers,
         service_type: data.service_type,
-        language: data.language,
+        luggage: data.luggage,
         notes: data.notes?.trim() ? data.notes.trim() : undefined,
       };
 
@@ -475,25 +471,29 @@ export function BookingJourneyForm({ variant = "page" }: BookingJourneyFormProps
           </div>
           <div>
             <label
-              htmlFor={`${idPrefix}-language`}
+              htmlFor={`${idPrefix}-luggage`}
               className="flex items-center gap-2 text-sm font-medium text-content"
             >
-              <Languages className="h-4 w-4 shrink-0 text-secondary" aria-hidden />
-              Preferred language
+              <Luggage className="h-4 w-4 shrink-0 text-secondary" aria-hidden />
+              Luggage
             </label>
             <select
-              id={`${idPrefix}-language`}
+              id={`${idPrefix}-luggage`}
               className={BOOK_TRIP_INPUT_CLASS}
-              {...register("language")}
-              aria-invalid={errors.language ? "true" : "false"}
+              {...register("luggage", { valueAsNumber: true })}
+              aria-invalid={errors.luggage ? "true" : "false"}
             >
-              {BOOKING_LANGUAGES.map((code) => (
-                <option key={code} value={code}>
-                  {BOOKING_LANGUAGE_LABELS[code]}
-                </option>
-              ))}
+              {Array.from({ length: MAX_BOOKING_LUGGAGE + 1 }, (_, i) => i).map(
+                (n) => (
+                  <option key={n} value={n}>
+                    {n === 0
+                      ? "No luggage"
+                      : `${n} ${n === 1 ? "piece" : "pieces"}`}
+                  </option>
+                ),
+              )}
             </select>
-            <FieldError message={errors.language?.message} />
+            <FieldError message={errors.luggage?.message} />
           </div>
         </div>
 
@@ -519,7 +519,7 @@ export function BookingJourneyForm({ variant = "page" }: BookingJourneyFormProps
                 id={`${idPrefix}-notes`}
                 rows={3}
                 maxLength={500}
-                placeholder="Flight number, accessibility needs, luggage details…"
+                placeholder="Flight number, accessibility needs…"
                 className={`${BOOK_TRIP_INPUT_CLASS} mt-1.5 resize-y`}
                 {...register("notes")}
                 aria-invalid={errors.notes ? "true" : "false"}

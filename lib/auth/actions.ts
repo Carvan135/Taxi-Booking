@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { claimBookingsForAuthenticatedUser } from "@/lib/guest/claim-server";
 import {
   formatZodError,
   signInSchema,
@@ -12,9 +13,29 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types";
 
+export type AuthActionResult = {
+  success: boolean;
+  error?: string;
+  role?: UserRole;
+  /** Guest bookings linked to the account on this request. */
+  claimed?: number;
+};
+
+async function claimGuestBookingsIfCustomer(
+  role: UserRole,
+): Promise<number> {
+  if (role !== "customer") return 0;
+  const result = await claimBookingsForAuthenticatedUser();
+  if (!result.success) {
+    console.error("claim guest bookings:", result.error);
+    return 0;
+  }
+  return result.claimed;
+}
+
 export async function signUp(
   data: SignUpFormData,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<AuthActionResult> {
   const parsed = signUpSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: formatZodError(parsed.error) };
@@ -32,7 +53,7 @@ export async function signUp(
         email,
         password,
         email_confirm: true,
-        user_metadata: { full_name, name: full_name },
+        user_metadata: { full_name, name: full_name, role: "operator" },
       });
 
     if (createError) {
@@ -83,6 +104,7 @@ export async function signUp(
       data: {
         full_name,
         name: full_name,
+        role: "customer",
       },
     },
   });
@@ -118,6 +140,9 @@ export async function signUp(
         error: profileError.message,
       };
     }
+
+    const claimed = await claimGuestBookingsIfCustomer(desiredRole);
+    return { success: true, claimed };
   }
 
   return { success: true };
@@ -125,7 +150,7 @@ export async function signUp(
 
 export async function signIn(
   data: SignInFormData,
-): Promise<{ success: boolean; error?: string; role?: UserRole }> {
+): Promise<AuthActionResult> {
   const parsed = signInSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: formatZodError(parsed.error) };
@@ -159,7 +184,10 @@ export async function signIn(
     };
   }
 
-  return { success: true, role: profile.role as UserRole };
+  const role = profile.role as UserRole;
+  const claimed = await claimGuestBookingsIfCustomer(role);
+
+  return { success: true, role, claimed };
 }
 
 export async function signOut(): Promise<void> {

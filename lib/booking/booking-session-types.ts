@@ -1,4 +1,3 @@
-import type { BookingLanguage } from "@/lib/validations/booking-languages";
 import type { ServiceType } from "@/lib/validations/enums";
 import type { VehicleType } from "@/types";
 
@@ -37,7 +36,7 @@ export type TaxibookBookingSession = {
   pickup_time: string;
   passengers: number;
   service_type: ServiceType;
-  language: BookingLanguage;
+  luggage: number;
   notes?: string;
   return_date?: string;
   return_time?: string;

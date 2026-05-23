@@ -4,10 +4,12 @@ import {
   type BookingLeg,
   type BookingStatus,
   type BookingType,
+  type PaymentStatus,
   type ServiceType,
 } from "@/lib/validations/enums";
 
-const PAYMENT_PAID = PAYMENT_STATUSES[1];
+const PAYMENT_PAID = PAYMENT_STATUSES[1] satisfies PaymentStatus;
+const PAYMENT_UNPAID = PAYMENT_STATUSES[0] satisfies PaymentStatus;
 import type { CustomerBookingRow } from "@/types";
 import type { VehicleType } from "@/types";
 
@@ -23,6 +25,8 @@ type LookupLeg = {
   service_type: ServiceType;
   price: number | null;
   status?: BookingStatus;
+  payment_status?: PaymentStatus;
+  operator_id?: string | null;
   created_at?: string;
   booking_type?: BookingType;
   group_reference?: string | null;
@@ -57,7 +61,7 @@ export function mapLookupResponseToBookings(
       id: leg.id,
       reference: leg.reference,
       customer_id: null,
-      operator_id: null,
+      operator_id: leg.operator_id ?? op?.id ?? null,
       pickup_address: leg.pickup_address,
       dropoff_address: leg.dropoff_address,
       pickup_date: leg.pickup_date,
@@ -65,9 +69,9 @@ export function mapLookupResponseToBookings(
       passengers: leg.passengers,
       vehicle_type: op?.vehicle_type ?? null,
       price: leg.price,
-      status: leg.status ?? BOOKING_STATUS.confirmed,
+      status: leg.status ?? BOOKING_STATUS.pending,
       stripe_payment_intent_id: null,
-      payment_status: PAYMENT_PAID,
+      payment_status: leg.payment_status ?? PAYMENT_UNPAID,
       notes: null,
       booking_type: leg.booking_type ?? data.booking_type,
       group_reference: leg.group_reference ?? data.group_reference,
@@ -85,7 +89,7 @@ export function mapLookupResponseToBookings(
       completed_at: null,
       assigned_at: null,
       journey_started_at: null,
-      language: "english",
+      luggage: 0,
       completion_status: "none",
       completion_requested_at: null,
       completion_requested_by: null,

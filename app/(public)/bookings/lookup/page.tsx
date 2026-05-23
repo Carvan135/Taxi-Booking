@@ -145,7 +145,13 @@ export default function BookingsLookupPage() {
             <BookingsTabsList
               bookings={bookings}
               title="Your booking"
-              subtitle="Looked up by reference and email"
+              subtitle="Looked up by reference and email. Unpaid bookings can be completed or cancelled below."
+              lookupEmail={email.trim().toLowerCase()}
+              onUnpaidCancelled={() => {
+                setBookings((prev) =>
+                  prev?.filter((b) => b.status !== "cancelled") ?? null,
+                );
+              }}
             />
           </div>
         ) : null}
