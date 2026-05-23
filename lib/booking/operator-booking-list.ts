@@ -4,6 +4,7 @@ import {
   type CompletionStatus,
   type PaymentStatus,
 } from "@/lib/validations/enums";
+import { PLACEHOLDER } from "@/lib/format/display";
 import type { Booking } from "@/types";
 
 export function formatPickupLine(booking: Booking): string {
@@ -15,7 +16,7 @@ export function formatPickupLine(booking: Booking): string {
 }
 
 export function formatMoney(amount: number | null | undefined): string {
-  if (amount == null || Number.isNaN(Number(amount))) return "—";
+  if (amount == null || Number.isNaN(Number(amount))) return PLACEHOLDER;
   return `£${Number(amount).toLocaleString("en-GB", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

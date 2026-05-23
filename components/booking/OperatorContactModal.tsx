@@ -3,6 +3,7 @@
 import { Mail, Phone } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { gmailComposeHref, telHref } from "@/lib/booking/operator-contact";
+import { PLACEHOLDER } from "@/lib/format/display";
 import type { CustomerBookingOperator } from "@/types";
 
 type OperatorContactModalProps = {
@@ -36,7 +37,7 @@ export function OperatorContactModal({
   const ratingLabel =
     operator.total_reviews > 0
       ? `${operator.rating.toFixed(1)} (${operator.total_reviews})`
-      : "—";
+      : PLACEHOLDER;
 
   return (
     <Modal open={open} title={operator.business_name} onClose={onClose}>

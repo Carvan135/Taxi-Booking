@@ -11,6 +11,7 @@ import { OperatorFinancesSummaryCards } from "@/components/operator/OperatorFina
 import { getOperatorFinancesSummary } from "@/lib/operator/operator-finances-summary";
 import { canReceivePayout } from "@/lib/stripe/payoutGuard";
 import { ukCalendarDayRangeToUtcIso } from "@/lib/booking/uk-pickup-time";
+import { PLACEHOLDER } from "@/lib/format/display";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentStatus } from "@/types";
 import { Wallet } from "lucide-react";
@@ -54,7 +55,7 @@ type EarningsRow = {
 };
 
 function formatCompletedAt(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return PLACEHOLDER;
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
     day: "numeric",
@@ -250,7 +251,7 @@ export default async function OperatorFinancesPage({
                 >
                   profile
                 </Link>{" "}
-                first — earnings appear once you&apos;re set up as an operator.
+                first. Earnings appear once you&apos;re set up as an operator.
               </p>
             ) : (
               <>

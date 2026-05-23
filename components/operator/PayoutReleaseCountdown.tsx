@@ -6,6 +6,7 @@ import {
   payoutReleaseStatus,
   type PayoutReleaseSnapshot,
 } from "@/lib/booking/payout-release-display";
+import { PLACEHOLDER } from "@/lib/format/display";
 
 type PayoutReleaseCountdownProps = PayoutReleaseSnapshot;
 
@@ -47,7 +48,7 @@ export function PayoutReleaseCountdown({
   }
 
   if (status === "pending") {
-    return <span className="text-content/50">—</span>;
+    return <span className="text-content/50">{PLACEHOLDER}</span>;
   }
 
   if (status === "ready") {
@@ -72,5 +73,5 @@ export function PayoutReleaseCountdown({
     );
   }
 
-  return <span className="text-content/50">—</span>;
+  return <span className="text-content/50">{PLACEHOLDER}</span>;
 }

@@ -8,6 +8,12 @@ export {
   canResumeBookingPayment,
 } from "@/lib/booking/booking-payment";
 
+export {
+  isBookingCompletedForCustomer,
+  isBookingDisputed,
+  needsCustomerCompletionAction,
+} from "@/lib/booking/customer-completion-ui";
+
 /** True when the customer may cancel from the app (also enforced in DB RPC). */
 export function canCustomerCancelBooking(
   booking: Pick<Booking, "status" | "journey_started_at">,

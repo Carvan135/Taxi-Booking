@@ -20,6 +20,7 @@ import {
   canCustomerCancelBooking,
   showCustomerJourneyGreeting,
 } from "@/lib/booking/customer-booking-ui";
+import { PLACEHOLDER } from "@/lib/format/display";
 import {
   COMPLETED_BOOKING_STATUSES,
   UPCOMING_BOOKING_STATUSES,
@@ -51,7 +52,7 @@ function formatPickupLine(b: CustomerBookingRow): string {
 }
 
 function formatPrice(amount: number | null): string {
-  if (amount == null || Number.isNaN(Number(amount))) return "—";
+  if (amount == null || Number.isNaN(Number(amount))) return PLACEHOLDER;
   return `£${Number(amount).toLocaleString("en-GB", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -64,7 +65,7 @@ function operatorLabel(b: CustomerBookingRow): string {
     return `${op.business_name} - ${op.vehicle_type}`;
   }
   if (b.operator_id) {
-    return "Operator assigned — details unavailable";
+    return "Operator assigned (details unavailable)";
   }
   return "Operator not assigned yet";
 }

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getNotificationContent } from "@/lib/notifications/messages";
+import { sendNotification } from "@/lib/notifications/send";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { BOOKING_STATUS } from "@/lib/validations/enums";
 import { bookingReviewSchema } from "@/lib/validations/review";
 
@@ -31,7 +33,7 @@ export async function POST(req: Request, context: RouteContext) {
 
     const { data: booking, error: readError } = await supabase
       .from("bookings")
-      .select("id, customer_id, operator_id, status")
+      .select("id, reference, customer_id, operator_id, status")
       .eq("id", bookingId)
       .maybeSingle();
 
@@ -90,6 +92,33 @@ export async function POST(req: Request, context: RouteContext) {
         );
       }
       return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
+    const admin = createServiceRoleClient();
+    const { data: operator } = await admin
+      .from("operators")
+      .select("user_id")
+      .eq("id", booking.operator_id)
+      .maybeSingle();
+
+    if (operator?.user_id) {
+      const content = getNotificationContent("customer_review_received", {
+        reference: booking.reference,
+        rating: String(parsed.data.rating),
+        has_comment: parsed.data.comment?.trim() ? "true" : "false",
+      });
+      await sendNotification({
+        user_id: operator.user_id,
+        type: "customer_review_received",
+        title: content.title,
+        message: content.message,
+        booking_id: bookingId,
+        metadata: {
+          reference: booking.reference,
+          rating: parsed.data.rating,
+          review_id: review.id,
+        },
+      });
     }
 
     return NextResponse.json({ review });

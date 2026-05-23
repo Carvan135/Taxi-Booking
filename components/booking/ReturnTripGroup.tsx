@@ -1,4 +1,5 @@
 import { BookingCard } from "@/components/booking/BookingCard";
+import { PLACEHOLDER } from "@/lib/format/display";
 import { BOOKING_LEG } from "@/lib/validations/enums";
 import type { CustomerBookingRow } from "@/types";
 
@@ -26,7 +27,7 @@ export function ReturnTripGroup({
     <div className="rounded-2xl border border-sky-200/80 bg-sky-50/40 p-4 shadow-sm sm:p-5">
       <p className="text-sm font-bold text-secondary">Return Trip</p>
       <p className="mt-0.5 text-xs text-content/55">
-        Group ref {outbound.group_reference ?? "—"}
+        Group ref {outbound.group_reference ?? PLACEHOLDER}
       </p>
       <div className="mt-4 space-y-3">
         {legs.map((leg) => {

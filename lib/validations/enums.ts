@@ -95,6 +95,7 @@ export const NOTIFICATION_TYPES = [
   "booking_cancelled",
   "stripe_connected",
   "new_booking_assigned",
+  "customer_review_received",
 ] as const;
 
 export const NOTIFICATION_STATUSES = ["unread", "read"] as const;

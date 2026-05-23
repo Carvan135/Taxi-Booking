@@ -4,13 +4,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Calendar,
   Luggage,
-  Loader2,
   Mail,
   MapPin,
   Phone,
   Users,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { OperatorBookingsListSkeleton } from "@/components/operator/OperatorBookingCardSkeleton";
 import { BookingStatusBadge } from "@/components/booking/BookingStatusBadge";
 import { StartJourneyConfirmModal } from "@/components/operator/StartJourneyConfirmModal";
 import { useStartJourneyAction } from "@/components/operator/useStartJourneyAction";
@@ -114,7 +115,10 @@ function OperatorBookingCard({
   const phone = booking.customer_phone?.trim() || null;
 
   return (
-    <article className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm">
+    <article
+      id={`booking-${booking.id}`}
+      className="scroll-mt-24 rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm transition-shadow"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="font-semibold text-content">#{booking.reference}</span>
@@ -157,7 +161,7 @@ function OperatorBookingCard({
           <span>
             {booking.pickup_address}
             <span className="block text-content/60">
-              → {booking.dropoff_address}
+              to {booking.dropoff_address}
             </span>
           </span>
         </p>
@@ -251,6 +255,8 @@ function OperatorBookingCard({
 }
 
 export function OperatorBookingsClient() {
+  const searchParams = useSearchParams();
+  const highlightBookingId = searchParams.get("booking");
   const queryClient = useQueryClient();
   const { data: bookings = [], isLoading, error } = useOperatorBookings();
   const [tab, setTab] = useState<OperatorBookingsTab>("upcoming");
@@ -286,6 +292,33 @@ export function OperatorBookingsClient() {
     [filtered],
   );
 
+  useEffect(() => {
+    if (!highlightBookingId || isLoading || bookings.length === 0) return;
+
+    const highlighted = bookings.find((b) => b.id === highlightBookingId);
+    if (highlighted) {
+      const wantsUpcoming = !isPastBooking(highlighted);
+      if (wantsUpcoming && tab !== "upcoming") {
+        setTab("upcoming");
+        return;
+      }
+      if (!wantsUpcoming && tab !== "completed") {
+        setTab("completed");
+        return;
+      }
+    }
+
+    const el = document.getElementById(`booking-${highlightBookingId}`);
+    if (!el) return;
+
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("ring-2", "ring-secondary", "ring-offset-2");
+    const timer = window.setTimeout(() => {
+      el.classList.remove("ring-2", "ring-secondary", "ring-offset-2");
+    }, 4000);
+    return () => window.clearTimeout(timer);
+  }, [highlightBookingId, isLoading, bookings, tab]);
+
   function showToast(message: string, isError = false) {
     setToast({ message, isError });
     window.setTimeout(() => setToast(null), isError ? 5000 : 3000);
@@ -303,7 +336,7 @@ export function OperatorBookingsClient() {
     closeEarlyStartModal,
   } = useStartJourneyAction({
     onSuccess: async () => {
-      showToast("Journey started — customer notified.");
+      showToast("Journey started. Customer notified.");
       await invalidate();
     },
     onError: (message) => showToast(message, true),
@@ -329,7 +362,7 @@ export function OperatorBookingsClient() {
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(json.error ?? "Could not mark complete");
-      showToast("Marked complete — customer notified.");
+      showToast("Marked complete. Customer notified.");
       await invalidate();
     } catch (e) {
       showToast(
@@ -356,7 +389,7 @@ export function OperatorBookingsClient() {
           Bookings
         </h1>
         <p className="mt-2 text-sm text-content/70 sm:text-base">
-          Manage assigned trips — start journeys, mark completion, and contact
+          Manage assigned trips: start journeys, mark completion, and contact
           customers.
         </p>
       </header>
@@ -393,10 +426,7 @@ export function OperatorBookingsClient() {
         ) : null}
 
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-sm text-content/70">
-            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-            Loading bookings…
-          </div>
+          <OperatorBookingsListSkeleton count={4} />
         ) : error ? (
           <p
             className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"

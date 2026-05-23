@@ -2,7 +2,10 @@
 
 import { ArrowRight, Car, Check, Clock, Copy, MapPin } from "lucide-react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { BookingCompletionActions } from "@/components/booking/BookingCompletionActions";
+import { BookingReviewModal } from "@/components/booking/BookingReviewModal";
 import { BookingStatusBadge } from "@/components/booking/BookingStatusBadge";
 import { OperatorContactModal } from "@/components/booking/OperatorContactModal";
 import { CancelBookingConfirmModal } from "@/components/booking/CancelBookingConfirmModal";
@@ -11,10 +14,14 @@ import {
   canCancelUnpaidBooking,
   canCustomerCancelBooking,
   canResumeBookingPayment,
+  isBookingDisputed,
+  needsCustomerCompletionAction,
   showCustomerJourneyGreeting,
 } from "@/lib/booking/customer-booking-ui";
 import { canCustomerReviewBooking } from "@/lib/booking/customer-review";
+import { bookingKeys } from "@/hooks/queries/keys";
 import { operatorContactFromRow } from "@/lib/booking/operator-contact";
+import { PLACEHOLDER } from "@/lib/format/display";
 import { BOOKING_LEG } from "@/lib/validations/enums";
 import { Button } from "@/components/ui/Button";
 import type { CustomerBookingRow } from "@/types";
@@ -45,7 +52,7 @@ function formatPickupLine(booking: CustomerBookingRow): string {
 }
 
 function formatPrice(amount: number | null): string {
-  if (amount == null || Number.isNaN(Number(amount))) return "—";
+  if (amount == null || Number.isNaN(Number(amount))) return PLACEHOLDER;
   return `£${Number(amount).toLocaleString("en-GB", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -58,7 +65,7 @@ function operatorLabel(booking: CustomerBookingRow): string {
     return `${op.business_name} · ${op.vehicle_type}`;
   }
   if (booking.operator_id) {
-    return "Operator assigned — details unavailable";
+    return "Operator assigned (details unavailable)";
   }
   return "Operator not assigned yet";
 }
@@ -73,9 +80,16 @@ export function BookingCard({
   lookupEmail,
   onUnpaidCancelled,
 }: BookingCardProps) {
+  const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [localReview, setLocalReview] = useState(booking.review);
+
+  function refreshBookings() {
+    void queryClient.invalidateQueries({ queryKey: bookingKeys.customer });
+  }
 
   async function copyReference() {
     try {
@@ -96,7 +110,10 @@ export function BookingCard({
     booking.customer_id != null &&
     canCustomerCancelBooking(booking);
   const showJourneyGreeting = showCustomerJourneyGreeting(booking);
-  const canReview = !showActions && canCustomerReviewBooking(booking);
+  const needsCompletion = needsCustomerCompletionAction(booking);
+  const canReview =
+    !needsCompletion &&
+    canCustomerReviewBooking({ ...booking, review: localReview });
   const needsPayment = canResumeBookingPayment(booking);
   const canCancelUnpaid = needsPayment && canCancelUnpaidBooking(booking);
   const payHref = booking.customer_id
@@ -214,6 +231,22 @@ export function BookingCard({
         </p>
       ) : null}
 
+      {needsCompletion ? (
+        <BookingCompletionActions
+          booking={booking}
+          compact
+          onAfterConfirm={() => setReviewModalOpen(true)}
+          onRefresh={refreshBookings}
+        />
+      ) : null}
+
+      {!needsCompletion && isBookingDisputed(booking) ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <strong className="font-semibold">Dispute under review.</strong> Our
+          team is reviewing your case.
+        </div>
+      ) : null}
+
       {needsPayment ? (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="text-sm font-semibold text-amber-950">Payment required</p>
@@ -239,24 +272,37 @@ export function BookingCard({
         </div>
       ) : null}
 
-      {showActions || canReview ? (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          {showActions ? (
-            <Link
-              href={`/bookings/${booking.id}`}
-              className="text-sm font-semibold text-secondary hover:underline"
-            >
-              View booking details
-            </Link>
-          ) : null}
-          {canReview ? (
-            <Link
-              href={`/bookings/${booking.id}`}
-              className="text-sm font-semibold text-amber-800 hover:underline"
-            >
-              Rate your trip
-            </Link>
-          ) : null}
+      {localReview ? (
+        <div className="mt-4 rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-sm text-content/80">
+          <p className="font-semibold text-primary">Thanks for your review!</p>
+          <p className="mt-1 text-xs">You rated this trip {localReview.rating}/5.</p>
+        </div>
+      ) : canReview ? (
+        <div className="mt-4 rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3">
+          <p className="text-sm font-semibold text-primary">How was your trip?</p>
+          <p className="mt-1 text-xs text-content/70">
+            Share a quick rating for {operatorLabel(booking)}.
+          </p>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className="mt-3"
+            onClick={() => setReviewModalOpen(true)}
+          >
+            Rate your trip
+          </Button>
+        </div>
+      ) : null}
+
+      {showActions && !needsCompletion ? (
+        <div className="mt-4">
+          <Link
+            href={`/bookings/${booking.id}`}
+            className="text-sm font-semibold text-secondary hover:underline"
+          >
+            View booking details
+          </Link>
         </div>
       ) : null}
 
@@ -317,6 +363,18 @@ export function BookingCard({
           void Promise.resolve(onCancel?.(booking.id)).finally(() => {
             setCancelConfirmOpen(false);
           });
+        }}
+      />
+
+      <BookingReviewModal
+        open={reviewModalOpen && !localReview}
+        onClose={() => setReviewModalOpen(false)}
+        bookingId={booking.id}
+        operatorName={booking.operators?.business_name ?? null}
+        bookingReference={booking.reference}
+        onSubmitted={(review) => {
+          setLocalReview(review);
+          refreshBookings();
         }}
       />
     </article>

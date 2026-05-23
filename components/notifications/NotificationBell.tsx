@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  Star,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -38,6 +39,8 @@ function notificationIcon(type: NotificationType) {
     case "auto_completed":
     case "completion_confirmed":
       return Clock;
+    case "customer_review_received":
+      return Star;
     default:
       return CheckCircle2;
   }

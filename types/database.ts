@@ -32,7 +32,8 @@ export type NotificationType =
   | "payout_released"
   | "booking_cancelled"
   | "stripe_connected"
-  | "new_booking_assigned";
+  | "new_booking_assigned"
+  | "customer_review_received";
 
 export type NotificationStatus = "unread" | "read";
 

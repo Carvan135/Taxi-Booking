@@ -18,10 +18,11 @@ import {
   useUpdatePriceRule,
 } from "@/hooks/queries";
 import type { BasePricingFormData, PredefinedPriceRuleFormData } from "@/lib/validations";
+import { PLACEHOLDER } from "@/lib/format/display";
 import type { PriceRule } from "@/types";
 
 function formatGbp(amount: number | undefined): string {
-  if (amount == null || Number.isNaN(amount)) return "—";
+  if (amount == null || Number.isNaN(amount)) return PLACEHOLDER;
   return `£${Number(amount).toLocaleString("en-GB", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

@@ -8,12 +8,8 @@ import Link from "next/link";
 import { ClearStripeReturnQuery } from "@/components/operator/ClearStripeReturnQuery";
 import { ConnectStripeButton } from "@/components/operator/ConnectStripeButton";
 import { OperatorDashboardStatusBanner } from "@/components/operator/OperatorDashboardStatusBanner";
-import {
-  OperatorPendingCompletion,
-  type OperatorCompletionBooking,
-} from "@/components/operator/OperatorPendingCompletion";
-import { COMPLETION_STATUS, BOOKING_STATUS } from "@/lib/validations/enums";
 import { StatCard } from "@/components/ui/StatCard";
+import { orPlaceholder } from "@/lib/format/display";
 import { createClient } from "@/lib/supabase/server";
 import type { OperatorStatus } from "@/types";
 
@@ -245,50 +241,6 @@ export default async function OperatorDashboardPage({
 
   const weekTotal = weeklyDayTotals.reduce((s, d) => s + d.amount, 0);
 
-  const readyToStart: OperatorCompletionBooking[] = [];
-  const enRoute: OperatorCompletionBooking[] = [];
-  const awaitingCustomer: OperatorCompletionBooking[] = [];
-
-  if (operatorId) {
-    const { data: completionRows } = await supabase
-      .from("bookings")
-      .select(
-        "id, reference, pickup_address, dropoff_address, pickup_date, pickup_time, status, completion_status, auto_complete_at, journey_started_at, luggage, customer_name, payment_status",
-      )
-      .eq("operator_id", operatorId)
-      .eq("status", BOOKING_STATUS.confirmed);
-
-    for (const row of completionRows ?? []) {
-      if (row.payment_status !== "paid") continue;
-
-      const item: OperatorCompletionBooking = {
-        id: row.id as string,
-        reference: row.reference as string,
-        pickup_address: row.pickup_address as string,
-        dropoff_address: row.dropoff_address as string,
-        pickup_date: row.pickup_date as string,
-        pickup_time: row.pickup_time as string,
-        status: row.status as string,
-        completion_status: (row.completion_status as string) ?? "none",
-        auto_complete_at: row.auto_complete_at as string | null,
-        journey_started_at: row.journey_started_at as string | null,
-        luggage: Number(row.luggage ?? 0),
-        customer_name: row.customer_name as string | null,
-      };
-      if (
-        item.completion_status === COMPLETION_STATUS.operator_marked_complete
-      ) {
-        awaitingCustomer.push(item);
-      } else if (item.completion_status === COMPLETION_STATUS.none) {
-        if (item.journey_started_at) {
-          enRoute.push(item);
-        } else {
-          readyToStart.push(item);
-        }
-      }
-    }
-  }
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div>
@@ -307,15 +259,6 @@ export default async function OperatorDashboardPage({
 
       {fromStripeReturn ? <ClearStripeReturnQuery /> : null}
 
-      {operator && status === "approved" ? (
-        <OperatorPendingCompletion
-          readyToStart={readyToStart}
-          enRoute={enRoute}
-          awaitingCustomer={awaitingCustomer}
-        />
-      ) : null}
-
-      {/* Informational status — navigation stays available regardless of approval */}
       <OperatorDashboardStatusBanner
         bannerId={statusBannerId}
         className="mt-4"
@@ -378,7 +321,7 @@ export default async function OperatorDashboardPage({
               <>
                 <strong className="font-semibold">Bank details received.</strong>{" "}
                 Stripe is verifying your information. Payouts unlock once that
-                finishes — usually 1–2 business days.
+                finishes, usually within 1–2 business days.
               </>
             ) : (
               <>
@@ -398,9 +341,7 @@ export default async function OperatorDashboardPage({
               </span>
               <strong className="font-semibold">Payouts enabled.</strong>{" "}
               {stripeConnectedAt ? (
-                <>
-                  Connected on {formatConnectedDate(stripeConnectedAt)}.
-                </>
+                <>Connected on {formatConnectedDate(stripeConnectedAt)}.</>
               ) : (
                 "Your bank account is connected."
               )}
@@ -445,7 +386,15 @@ export default async function OperatorDashboardPage({
 
       <div className="mt-8 grid gap-6 lg:grid-cols-5">
         <section className="lg:col-span-3">
-          <h2 className="text-lg font-semibold text-primary">Recent bookings</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-primary">Recent bookings</h2>
+            <Link
+              href="/operator/bookings"
+              className="text-sm font-semibold text-secondary hover:underline"
+            >
+              View all
+            </Link>
+          </div>
           <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             {recentRows.length === 0 ? (
               <p className="py-10 text-center text-sm text-content/60">
@@ -453,28 +402,29 @@ export default async function OperatorDashboardPage({
               </p>
             ) : (
               recentRows.map((b) => (
-                <div
+                <Link
                   key={b.id}
-                  className="flex flex-col gap-3 rounded-lg bg-slate-50 px-4 py-4 sm:flex-row sm:items-start sm:justify-between"
+                  href={`/operator/bookings?booking=${encodeURIComponent(b.id)}`}
+                  className="flex flex-col gap-3 rounded-lg bg-slate-50 px-4 py-4 transition hover:bg-slate-100/90 hover:ring-1 hover:ring-slate-200 sm:flex-row sm:items-start sm:justify-between"
                 >
                   <div className="min-w-0 space-y-1 text-sm">
                     <p className="font-semibold text-primary">
                       #{b.reference.replace(/^#/, "")}
                     </p>
                     <p className="font-medium text-content">
-                      {b.profiles?.full_name ?? "Customer"}
+                      {orPlaceholder(b.profiles?.full_name, "Customer")}
                     </p>
                     <p className="text-content/75">
-                      {b.pickup_address} → {b.dropoff_address}
+                      {b.pickup_address} to {b.dropoff_address}
                     </p>
                     <p className="text-content/60">
-                      Time: {formatTime(b.pickup_time)}
+                      {b.pickup_date} · {formatTime(b.pickup_time)}
                     </p>
                   </div>
                   <span className="shrink-0 self-start rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-content/90 ring-1 ring-slate-200">
                     {b.status.replace(/_/g, " ")}
                   </span>
-                </div>
+                </Link>
               ))
             )}
           </div>

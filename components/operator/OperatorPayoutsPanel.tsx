@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PLACEHOLDER } from "@/lib/format/display";
 
 type PayoutRow = {
   id: string;
@@ -27,7 +28,7 @@ function formatMoney(amount: number, currency: string): string {
 }
 
 function formatUnix(ts: number | null | undefined): string {
-  if (ts == null || !Number.isFinite(ts)) return "—";
+  if (ts == null || !Number.isFinite(ts)) return PLACEHOLDER;
   const ms = ts > 1e12 ? ts : ts * 1000;
   return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium",
@@ -105,7 +106,7 @@ export function OperatorPayoutsPanel() {
   if (!hasAccount) {
     return (
       <p className="text-sm text-content/70">
-        Finish Stripe onboarding first — your payout history will appear here
+        Finish Stripe onboarding first. Your payout history will appear here
         once a connected account exists.
       </p>
     );
@@ -159,7 +160,7 @@ export function OperatorPayoutsPanel() {
                 ) : p.method ? (
                   <span className="capitalize">{p.method}</span>
                 ) : (
-                  "—"
+                  PLACEHOLDER
                 )}
               </td>
             </tr>

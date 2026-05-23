@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BookingCompletionPanel } from "@/components/booking/BookingCompletionPanel";
-import { BookingReviewPanel } from "@/components/booking/BookingReviewPanel";
+import { CustomerBookingDetailPanels } from "@/components/customer/CustomerBookingDetailPanels";
 import { formatBookingLuggage } from "@/lib/booking/luggage-display";
 import { BookingStatusBadge } from "@/components/booking/BookingStatusBadge";
 import { BookingStatusTimeline } from "@/components/booking/BookingStatusTimeline";
@@ -112,9 +111,8 @@ export default async function CustomerBookingDetailPage({ params }: PageProps) {
       <UnpaidBookingBanner booking={booking} />
 
       <div className="mt-6 space-y-4">
-        <BookingCompletionPanel booking={booking} />
-        <BookingReviewPanel
-          bookingId={booking.id}
+        <CustomerBookingDetailPanels
+          booking={booking}
           operatorName={operatorName}
           canReview={canReview}
           existingReview={review}

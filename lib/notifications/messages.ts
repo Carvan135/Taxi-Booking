@@ -60,6 +60,10 @@ export function getNotificationContent(
       title: "New Booking Assigned",
       message: `A new booking ${data.reference ?? ""} has been assigned to you for ${data.pickup_date ?? "your schedule"}.`,
     },
+    customer_review_received: {
+      title: "New customer review",
+      message: `You received a ${data.rating ?? ""}-star review for booking ${data.reference ?? ""}.${data.has_comment === "true" ? " The customer left a comment." : ""}`,
+    },
   };
   return map[type];
 }
