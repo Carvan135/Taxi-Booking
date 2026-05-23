@@ -4,7 +4,7 @@ export type FinancesTab = "onboarding" | "earnings" | "payouts";
 
 type FinancesTabNavProps = {
   active: FinancesTab;
-  earningsQuery: { from: string; to: string; payment: string };
+  earningsQuery: { from: string; to: string };
 };
 
 export function FinancesTabNav({ active, earningsQuery }: FinancesTabNavProps) {
@@ -12,16 +12,15 @@ export function FinancesTabNav({ active, earningsQuery }: FinancesTabNavProps) {
   earningsParams.set("tab", "earnings");
   earningsParams.set("from", earningsQuery.from);
   earningsParams.set("to", earningsQuery.to);
-  earningsParams.set("payment", earningsQuery.payment);
 
   const tabs: { id: FinancesTab; label: string; href: string }[] = [
-    { id: "onboarding", label: "Onboarding", href: "/operator/finances?tab=onboarding" },
     {
       id: "earnings",
       label: "Earnings",
       href: `/operator/finances?${earningsParams.toString()}`,
     },
     { id: "payouts", label: "Payouts", href: "/operator/finances?tab=payouts" },
+    { id: "onboarding", label: "Onboarding", href: "/operator/finances?tab=onboarding" },
   ];
 
   return (
@@ -35,7 +34,7 @@ export function FinancesTabNav({ active, earningsQuery }: FinancesTabNavProps) {
           <Link
             key={t.id}
             href={t.href}
-            className={`rounded-t-lg px-4 py-2.5 text-sm font-semibold transition ${
+            className={`rounded-t-lg md:px-4 px-2 py-2.5 text-xs md:text-sm font-semibold transition ${
               isActive
                 ? "border border-b-0 border-slate-200 bg-white text-secondary"
                 : "text-content/70 hover:bg-slate-50 hover:text-content"

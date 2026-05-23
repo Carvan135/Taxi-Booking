@@ -15,9 +15,11 @@ export type ServerSession = {
 export async function getServerSession(): Promise<ServerSession | null> {
   const supabase = createClient();
   const user = await getUser(supabase);
+  console.log("getServerSession", user);
   if (!user) return null;
 
   const profile = await getProfile(supabase, user.id);
+  console.log("profile", profile);
   if (!profile) return null;
 
   return { user, profile, role: profile.role };

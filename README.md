@@ -77,7 +77,8 @@ Customer–operator taxi booking marketplace for the UK. Milestone 1 focuses on 
    - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
    - `NEXT_PUBLIC_APP_URL` (your Netlify site URL, e.g. `https://your-site.netlify.app`)
    - Optional: `NEXT_PUBLIC_SUPPORT_EMAIL`
-3. Redeploy after removing `.env` / `.env.production` from the repository. If secrets were ever pushed to a public repo, rotate Stripe and Supabase keys and consider purging git history ([BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) or `git filter-repo`).
+3. **Auto-complete cron (Supabase only — no Netlify setup):** See [Supabase auto-complete cron](#supabase-auto-complete-cron) below.
+4. Redeploy after removing `.env` / `.env.production` from the repository. If secrets were ever pushed to a public repo, rotate Stripe and Supabase keys and consider purging git history ([BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) or `git filter-repo`).
 
 ### Vercel + GitHub
 
@@ -95,6 +96,23 @@ Customer–operator taxi booking marketplace for the UK. Milestone 1 focuses on 
 | `STRIPE_SECRET_KEY` | `@stripe_secret_key` |
 | `STRIPE_WEBHOOK_SECRET` | `@stripe_webhook_secret` |
 | `NEXT_PUBLIC_APP_URL` | `@next_public_app_url` |
+
+## Supabase auto-complete cron
+
+Booking auto-complete and operator unpause run in a **Supabase Edge Function** on a schedule. No Netlify cron or `CRON_SECRET` is required.
+
+1. Apply migrations (includes `021_supabase_auto_complete_cron.sql`).
+2. Enable extensions **pg_cron**, **pg_net**, **supabase_vault** (Database → Extensions).
+3. Deploy the function: `supabase functions deploy auto-complete`
+4. Create Vault secrets (SQL editor, once per project):
+
+```sql
+SELECT vault.create_secret('https://YOUR_PROJECT_REF.supabase.co', 'project_url', 'Supabase API URL');
+SELECT vault.create_secret('YOUR_SUPABASE_ANON_KEY', 'publishable_key', 'anon key for scheduled invoke');
+```
+
+5. Confirm job **carvan-auto-complete** exists: `SELECT * FROM cron.job;`
+6. Manual test: `supabase functions invoke auto-complete --no-verify-jwt` (local) or invoke from Dashboard → Edge Functions.
 
 ## Configuration notes
 

@@ -10,6 +10,7 @@ import type { Resolver } from "react-hook-form";
 import type { DefaultValues } from "react-hook-form";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
+import { submitOperatorApplication } from "@/lib/actions/operatorOnboarding";
 import { signUp } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/client";
 import { operatorSignUpFormSchema } from "@/lib/validations";
@@ -188,22 +189,18 @@ export default function OperatorSignupPage() {
       return;
     }
 
-    const { error: operatorError } = await supabase.from("operators").upsert(
-      {
-        user_id: user.id,
-        business_name: data.business_name,
-        vehicle_type: data.vehicle_type,
-        vehicle_registration: data.vehicle_registration,
-        license_number: data.license_number,
-        license_expiry: data.license_expiry,
-        license_document_url: storagePath,
-        base_price: data.base_price,
-      },
-      { onConflict: "user_id" },
-    );
+    const application = await submitOperatorApplication({
+      business_name: data.business_name,
+      vehicle_type: data.vehicle_type,
+      vehicle_registration: data.vehicle_registration,
+      license_number: data.license_number,
+      license_expiry: data.license_expiry,
+      license_document_url: storagePath,
+      base_price: data.base_price,
+    });
 
-    if (operatorError) {
-      setSubmitError(operatorError.message);
+    if (!application.success) {
+      setSubmitError(application.error ?? "Could not submit your application.");
       return;
     }
 

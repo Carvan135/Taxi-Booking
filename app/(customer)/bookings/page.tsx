@@ -1,5 +1,8 @@
-import { MyBookingsClient } from "@/components/customer/MyBookingsClient";
+import { BookingsTabsList } from "@/components/booking/BookingsTabsList";
+import { fetchCustomerBookings } from "@/lib/booking/fetch-customer-bookings";
 
-export default function CustomerBookingsPage() {
-  return <MyBookingsClient />;
+export default async function CustomerBookingsPage() {
+  const bookings = await fetchCustomerBookings();
+
+  return <BookingsTabsList bookings={bookings} enableManageActions />;
 }

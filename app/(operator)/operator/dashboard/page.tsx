@@ -8,6 +8,11 @@ import Link from "next/link";
 import { ClearStripeReturnQuery } from "@/components/operator/ClearStripeReturnQuery";
 import { ConnectStripeButton } from "@/components/operator/ConnectStripeButton";
 import { OperatorDashboardStatusBanner } from "@/components/operator/OperatorDashboardStatusBanner";
+import {
+  OperatorPendingCompletion,
+  type OperatorCompletionBooking,
+} from "@/components/operator/OperatorPendingCompletion";
+import { COMPLETION_STATUS, BOOKING_STATUS } from "@/lib/validations/enums";
 import { StatCard } from "@/components/ui/StatCard";
 import { createClient } from "@/lib/supabase/server";
 import type { OperatorStatus } from "@/types";
@@ -240,6 +245,50 @@ export default async function OperatorDashboardPage({
 
   const weekTotal = weeklyDayTotals.reduce((s, d) => s + d.amount, 0);
 
+  const readyToStart: OperatorCompletionBooking[] = [];
+  const enRoute: OperatorCompletionBooking[] = [];
+  const awaitingCustomer: OperatorCompletionBooking[] = [];
+
+  if (operatorId) {
+    const { data: completionRows } = await supabase
+      .from("bookings")
+      .select(
+        "id, reference, pickup_address, dropoff_address, pickup_date, pickup_time, status, completion_status, auto_complete_at, journey_started_at, language, customer_name, payment_status",
+      )
+      .eq("operator_id", operatorId)
+      .eq("status", BOOKING_STATUS.confirmed);
+
+    for (const row of completionRows ?? []) {
+      if (row.payment_status !== "paid") continue;
+
+      const item: OperatorCompletionBooking = {
+        id: row.id as string,
+        reference: row.reference as string,
+        pickup_address: row.pickup_address as string,
+        dropoff_address: row.dropoff_address as string,
+        pickup_date: row.pickup_date as string,
+        pickup_time: row.pickup_time as string,
+        status: row.status as string,
+        completion_status: (row.completion_status as string) ?? "none",
+        auto_complete_at: row.auto_complete_at as string | null,
+        journey_started_at: row.journey_started_at as string | null,
+        language: (row.language as string | null) ?? "english",
+        customer_name: row.customer_name as string | null,
+      };
+      if (
+        item.completion_status === COMPLETION_STATUS.operator_marked_complete
+      ) {
+        awaitingCustomer.push(item);
+      } else if (item.completion_status === COMPLETION_STATUS.none) {
+        if (item.journey_started_at) {
+          enRoute.push(item);
+        } else {
+          readyToStart.push(item);
+        }
+      }
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div>
@@ -257,6 +306,14 @@ export default async function OperatorDashboardPage({
       </div>
 
       {fromStripeReturn ? <ClearStripeReturnQuery /> : null}
+
+      {operator && status === "approved" ? (
+        <OperatorPendingCompletion
+          readyToStart={readyToStart}
+          enRoute={enRoute}
+          awaitingCustomer={awaitingCustomer}
+        />
+      ) : null}
 
       {/* Informational status — navigation stays available regardless of approval */}
       <OperatorDashboardStatusBanner

@@ -74,6 +74,16 @@ export const operatorOnboardingSchema = z.object({
   }),
 });
 
+/** Operator business details submitted after account creation (server-validated). */
+export const operatorApplicationSchema = operatorOnboardingSchema.pick({
+  business_name: true,
+  vehicle_type: true,
+  vehicle_registration: true,
+  license_number: true,
+  license_expiry: true,
+  base_price: true,
+});
+
 /** Full onboarding form including license file upload (client-only field). */
 export const operatorOnboardingFormSchema = operatorOnboardingSchema.extend({
   license_document: licenseFileSchema,

@@ -1,5 +1,9 @@
 import Stripe from "stripe";
 import { getStripeServer } from "@/lib/stripe/server";
+import {
+  syncBookingsFromPaymentIntent,
+  syncBookingsPaymentFailed,
+} from "@/lib/stripe/sync-booking-payment";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -62,6 +66,37 @@ export async function POST(req: Request) {
           details_submitted: account.details_submitted,
           payouts_enabled: nowEnabled,
         });
+        break;
+      }
+
+      case "payment_intent.succeeded": {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        const sync = await syncBookingsFromPaymentIntent(supabase, intent, {
+          sendNotifications: true,
+        });
+
+        if (!sync.updated && !sync.error) {
+          console.log("Booking not yet created for intent:", intent.id);
+        }
+        if (sync.error) {
+          console.error(
+            "payment_intent.succeeded booking sync error:",
+            sync.error,
+          );
+        }
+        break;
+      }
+
+      case "payment_intent.payment_failed": {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        const sync = await syncBookingsPaymentFailed(supabase, intent.id);
+
+        if (sync.error) {
+          console.error(
+            "payment_intent.payment_failed booking update error:",
+            sync.error,
+          );
+        }
         break;
       }
 

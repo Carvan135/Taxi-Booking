@@ -15,22 +15,28 @@ import {
   useMyBookings,
   type CustomerBookingRow,
 } from "@/hooks/queries/useBookings";
-import type { BookingStatus } from "@/types";
+import {
+  canCustomerCancelBooking,
+  showCustomerJourneyGreeting,
+} from "@/lib/booking/customer-booking-ui";
+import {
+  COMPLETED_BOOKING_STATUSES,
+  UPCOMING_BOOKING_STATUSES,
+  type BookingStatus,
+} from "@/lib/validations/enums";
 
 type TabId = "upcoming" | "completed";
 
-const UPCOMING_STATUSES: BookingStatus[] = [
-  "pending",
-  "confirmed",
-  "operator_assigned",
-];
-
 function isUpcomingBooking(b: CustomerBookingRow): boolean {
-  return UPCOMING_STATUSES.includes(b.status);
+  return (UPCOMING_BOOKING_STATUSES as readonly BookingStatus[]).includes(
+    b.status,
+  );
 }
 
 function isCompletedTabBooking(b: CustomerBookingRow): boolean {
-  return b.status === "completed" || b.status === "cancelled";
+  return (COMPLETED_BOOKING_STATUSES as readonly BookingStatus[]).includes(
+    b.status,
+  );
 }
 
 function pickupMillis(b: CustomerBookingRow): number {
@@ -86,6 +92,8 @@ function BookingCard({
       : null;
 
   const showActions = tab === "upcoming";
+  const canCancel = canCustomerCancelBooking(booking);
+  const showJourneyGreeting = showCustomerJourneyGreeting(booking);
 
   return (
     <article className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm sm:p-6">
@@ -114,6 +122,15 @@ function BookingCard({
       </div>
 
       <p className="mt-2 text-sm text-slate-500">{formatPickupLine(booking)}</p>
+
+      {showJourneyGreeting ? (
+        <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+          <p className="font-semibold">Enjoy your journey!</p>
+          <p className="mt-1 text-sky-900/90">
+            Your driver is on the way to pickup.
+          </p>
+        </div>
+      ) : null}
 
       <ul className="mt-5 space-y-4">
         <li className="flex gap-3">
@@ -152,26 +169,33 @@ function BookingCard({
         <>
           <div className="my-5 border-t border-slate-100" />
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              className="flex-1 border-slate-300 font-semibold text-content"
-              loading={cancellingId === booking.id}
-              disabled={cancellingId !== null}
-              onClick={() => {
-                if (
-                  !window.confirm(
-                    "Cancel this booking? This cannot be undone.",
-                  )
-                ) {
-                  return;
-                }
-                onCancel(booking.id);
-              }}
-            >
-              Cancel booking
-            </Button>
+            {canCancel ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                className="flex-1 border-slate-300 font-semibold text-content"
+                loading={cancellingId === booking.id}
+                disabled={cancellingId !== null}
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      "Cancel this booking? This cannot be undone.",
+                    )
+                  ) {
+                    return;
+                  }
+                  onCancel(booking.id);
+                }}
+              >
+                Cancel booking
+              </Button>
+            ) : booking.journey_started_at ? (
+              <p className="flex-1 text-sm text-slate-600">
+                This booking can&apos;t be cancelled after your driver has
+                started the journey.
+              </p>
+            ) : null}
             {contactMailto ? (
               <a
                 href={contactMailto}

@@ -4,8 +4,10 @@ import type { LucideIcon } from "lucide-react";
 import {
   Calendar,
   LayoutDashboard,
+  Percent,
   Shield,
   User,
+  Settings,
   Users,
   Wallet,
 } from "lucide-react";
@@ -19,6 +21,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 const operatorItems: NavItem[] = [
   { href: "/operator/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/operator/bookings", label: "Bookings", icon: Calendar },
+  { href: "/operator/price-rules", label: "Price Rules", icon: Percent },
   { href: "/operator/finances", label: "Finances", icon: Wallet },
   { href: "/operator/profile", label: "Profile", icon: User },
 ];
@@ -27,6 +30,7 @@ const adminItems: NavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/bookings", label: "Bookings", icon: Calendar },
   { href: "/admin/operators", label: "Operators", icon: Users },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 type SidebarProps = {

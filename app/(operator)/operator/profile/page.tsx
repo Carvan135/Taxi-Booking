@@ -1,6 +1,7 @@
 import { User } from "lucide-react";
 import { OperatorProfileForm } from "@/components/operator/OperatorProfileForm";
 import { createClient } from "@/lib/supabase/server";
+import type { OperatorStatus } from "@/types";
 import {
   operatorProfileVehicleTypes,
   type OperatorProfileFormValues,
@@ -119,11 +120,23 @@ export default async function OperatorProfilePage() {
           Profile settings
         </h1>
         <p className="mt-2 text-sm text-content/70 sm:text-base">
-          Manage your operator profile and business information.
+          Manage your profile, business information, and availability.
         </p>
       </div>
 
-      <OperatorProfileForm initialForm={initialForm} summary={summary} />
+      <OperatorProfileForm
+        initialForm={initialForm}
+        summary={summary}
+        availability={
+          raw && (raw.status as OperatorStatus) === "approved"
+            ? {
+                isPaused: raw.is_paused === true,
+                pausedAt:
+                  raw.paused_at == null ? null : String(raw.paused_at),
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

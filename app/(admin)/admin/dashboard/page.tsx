@@ -11,6 +11,7 @@ import {
   type PendingOperatorRow,
 } from "@/components/admin/PendingOperatorsPanel";
 import { StatCard } from "@/components/ui/StatCard";
+import { getCommissionPercentage } from "@/lib/booking/platform-settings-server";
 import { createClient } from "@/lib/supabase/server";
 
 function todayDateString(): string {
@@ -153,7 +154,8 @@ export default async function AdminDashboardPage() {
   const lastMonthRevenue =
     lastMonthRevRows?.reduce((s, r) => s + Number(r.price ?? 0), 0) ?? 0;
 
-  const commissionRate = 0.15;
+  const commissionPercent = await getCommissionPercentage();
+  const commissionRate = commissionPercent / 100;
   const thisMonthCommission = thisMonthRevenue * commissionRate;
   const lastMonthCommission = lastMonthRevenue * commissionRate;
 

@@ -13,6 +13,7 @@ import {
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
+import { OperatorAvailabilityToggle } from "@/components/operator/OperatorAvailabilityToggle";
 import { Button } from "@/components/ui/Button";
 import { updateOperatorProfile } from "@/lib/actions/operatorProfile";
 import {
@@ -44,11 +45,16 @@ export type OperatorProfileFormProps = {
     completionRate: number;
     fleetVehicleCount: number;
   };
+  availability?: {
+    isPaused: boolean;
+    pausedAt: string | null;
+  };
 };
 
 export function OperatorProfileForm({
   initialForm,
   summary,
+  availability,
 }: OperatorProfileFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [savedOk, setSavedOk] = useState(false);
@@ -126,6 +132,16 @@ export function OperatorProfileForm({
               </dd>
             </div>
           </dl>
+          {availability ? (
+            <>
+              <hr className="my-6 border-slate-200" />
+              <OperatorAvailabilityToggle
+                embedded
+                isPaused={availability.isPaused}
+                pausedAt={availability.pausedAt}
+              />
+            </>
+          ) : null}
         </div>
       </aside>
 

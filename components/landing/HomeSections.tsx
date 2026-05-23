@@ -5,7 +5,7 @@ import {
   Shield,
 } from "lucide-react";
 import Link from "next/link";
-import { HeroBookingForm } from "@/components/landing/HeroBookingForm";
+import { BookingJourneyForm } from "@/components/booking/BookingJourneyForm";
 
 const features = [
   {
@@ -99,7 +99,7 @@ export function HeroSection() {
         </div>
 
         <div className="relative z-10 mx-auto mt-10 max-w-3xl lg:mt-12">
-          <HeroBookingForm />
+          <BookingJourneyForm variant="hero" />
         </div>
       </div>
     </section>

@@ -10,13 +10,9 @@ import type { UserRole } from "@/types";
  * `/book` is public — see `(public)/book`.
  * `/dashboard` redirects to `/bookings` for backwards compatibility.
  */
-const CUSTOMER_ROUTE_PREFIXES = [
-  "/dashboard",
-  "/bookings",
-  "/confirmation",
-  "/operators",
-  "/payment",
-] as const;
+const CUSTOMER_ROUTE_PREFIXES = ["/dashboard"] as const;
+
+const CUSTOMER_BOOKINGS_LIST_PATH = "/bookings";
 
 function matchesProtectedPrefix(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(`${base}/`);
@@ -24,7 +20,17 @@ function matchesProtectedPrefix(pathname: string, base: string): boolean {
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true;
-  const publicRoots = ["/contact", "/faq", "/privacy", "/terms"];
+  const publicRoots = [
+    "/book",
+    "/operators",
+    "/payment",
+    "/confirmation",
+    "/bookings/lookup",
+    "/contact",
+    "/faq",
+    "/privacy",
+    "/terms",
+  ];
   for (const root of publicRoots) {
     if (pathname === root || pathname.startsWith(`${root}/`)) return true;
   }
@@ -121,6 +127,29 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   if (isPublicPath(pathname)) {
+    return supabaseResponse;
+  }
+
+  if (pathname === CUSTOMER_BOOKINGS_LIST_PATH) {
+    if (!user) {
+      const lookupUrl = new URL("/bookings/lookup", request.url);
+      const res = NextResponse.redirect(lookupUrl);
+      mergeCookies(supabaseResponse, res);
+      return res;
+    }
+    if (!role) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      const res = NextResponse.redirect(loginUrl);
+      mergeCookies(supabaseResponse, res);
+      return res;
+    }
+    if (role !== "customer") {
+      const dest = new URL(getDashboardPathForRole(role), request.url);
+      const res = NextResponse.redirect(dest);
+      mergeCookies(supabaseResponse, res);
+      return res;
+    }
     return supabaseResponse;
   }
 

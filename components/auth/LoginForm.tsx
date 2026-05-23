@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -9,6 +10,10 @@ import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { signIn } from "@/lib/auth/actions";
 import { safeInternalRedirectPath } from "@/lib/auth/routes";
+import {
+  claimGuestBookings,
+  shouldClaimBookingsAfterAuth,
+} from "@/lib/guest/claim-bookings-client";
 import { signInSchema, type SignInFormData } from "@/lib/validations";
 
 const cardClass =
@@ -22,6 +27,7 @@ type LoginFormProps = {
 
 export function LoginForm({ variant = "rider" }: LoginFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered") === "true";
   const redirectParam = safeInternalRedirectPath(
@@ -48,6 +54,14 @@ export function LoginForm({ variant = "rider" }: LoginFormProps) {
     if (!result.success) {
       setSubmitError(result.error ?? "Sign in failed.");
       return;
+    }
+
+    if (
+      variant === "rider" &&
+      result.role === "customer" &&
+      shouldClaimBookingsAfterAuth(redirectParam)
+    ) {
+      await claimGuestBookings(queryClient);
     }
 
     if (redirectParam) {

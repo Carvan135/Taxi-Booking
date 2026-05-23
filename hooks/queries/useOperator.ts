@@ -56,25 +56,6 @@ export function useOperator(operatorId?: string) {
   });
 }
 
-export function useOperators() {
-  const supabase = createClient();
-
-  return useQuery({
-    queryKey: ["operators"],
-    queryFn: async (): Promise<Operator[]> => {
-      const { data, error } = await supabase
-        .from("operators")
-        .select("*")
-        .eq("status", "approved")
-        .order("business_name", { ascending: true });
-
-      if (error) throw error;
-      return (data ?? []) as Operator[];
-    },
-    staleTime: DEFAULT_STALE_TIME,
-  });
-}
-
 export function useUpdateOperator() {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -87,9 +68,13 @@ export function useUpdateOperator() {
       operatorId: string;
       updates: OperatorUpdate;
     }): Promise<Operator> => {
+      const { status: _ignored, ...safeUpdates } = updates as OperatorUpdate & {
+        status?: unknown;
+      };
+
       const { data, error } = await supabase
         .from("operators")
-        .update(updates)
+        .update(safeUpdates)
         .eq("id", operatorId)
         .select()
         .single();
@@ -98,7 +83,7 @@ export function useUpdateOperator() {
       return data as Operator;
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["operators"] });
+      void queryClient.invalidateQueries({ queryKey: ["operators", "approved"] });
       void queryClient.invalidateQueries({
         queryKey: ["operator", variables.operatorId],
       });

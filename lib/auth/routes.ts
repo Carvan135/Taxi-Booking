@@ -24,5 +24,5 @@ export function safeInternalRedirectPath(
   if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
   if (trimmed.startsWith("/login") || trimmed.startsWith("/signup"))
     return null;
-  return trimmed;
+  return trimmed; 
 }

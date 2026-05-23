@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { Car, LogOut, Menu, Shield, X } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { FormSubmitSpinner } from "@/components/ui/FormSubmitSpinner";
 import { signOut } from "@/lib/auth/actions";
@@ -41,6 +42,11 @@ export function DashboardShell({ variant, children }: DashboardShellProps) {
               {title}
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <NotificationBell
+              role={variant === "admin" ? "admin" : "operator"}
+              tone="dark"
+            />
           <form action={signOut}>
             <FormSubmitSpinner
               icon={<LogOut className="h-4 w-4" aria-hidden />}
@@ -49,6 +55,7 @@ export function DashboardShell({ variant, children }: DashboardShellProps) {
               Logout
             </FormSubmitSpinner>
           </form>
+          </div>
         </div>
       </header>
 

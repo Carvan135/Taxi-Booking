@@ -1,5 +1,9 @@
-import { BookRideWizard } from "@/components/booking/BookRideWizard";
+import { BookingJourneyForm } from "@/components/booking/BookingJourneyForm";
 
 export default function BookPage() {
-  return <BookRideWizard />;
+  return (
+    <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50">
+      <BookingJourneyForm variant="page" />
+    </section>
+  );
 }

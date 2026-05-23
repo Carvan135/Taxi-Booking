@@ -8,6 +8,7 @@ import {
   NavbarUserMenu,
   type NavbarUserMenuSession,
 } from "@/components/layout/NavbarUserMenu";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 type NavbarVariant = "public" | "customer";
 
@@ -111,7 +112,10 @@ export function Navbar({ variant, session = null }: NavbarProps) {
               </Link>
             ))}
             {session ? (
-              <NavbarUserMenu session={session} appearance="dark" />
+              <>
+                <NotificationBell role="customer" tone="dark" />
+                <NavbarUserMenu session={session} appearance="dark" />
+              </>
             ) : (
               <Link
                 href="/login"
@@ -124,7 +128,10 @@ export function Navbar({ variant, session = null }: NavbarProps) {
 
           <div className="flex items-center gap-2 lg:hidden">
             {session ? (
-              <NavbarUserMenu session={session} appearance="dark" />
+              <>
+                <NotificationBell role="customer" tone="dark" />
+                <NavbarUserMenu session={session} appearance="dark" />
+              </>
             ) : null}
             <button
               type="button"
@@ -220,7 +227,10 @@ export function Navbar({ variant, session = null }: NavbarProps) {
             );
           })}
           {session ? (
-            <NavbarUserMenu session={session} appearance="light" />
+            <>
+              <NotificationBell role="customer" tone="light" />
+              <NavbarUserMenu session={session} appearance="light" />
+            </>
           ) : null}
         </div>
       </nav>

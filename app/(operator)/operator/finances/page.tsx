@@ -6,6 +6,11 @@ import {
 } from "@/components/operator/FinancesTabNav";
 import { OperatorOnboardingPanel } from "@/components/operator/OperatorOnboardingPanel";
 import { OperatorPayoutsPanel } from "@/components/operator/OperatorPayoutsPanel";
+import { PayoutReleaseCountdown } from "@/components/operator/PayoutReleaseCountdown";
+import { OperatorFinancesSummaryCards } from "@/components/operator/OperatorFinancesSummaryCards";
+import { getOperatorFinancesSummary } from "@/lib/operator/operator-finances-summary";
+import { canReceivePayout } from "@/lib/stripe/payoutGuard";
+import { ukCalendarDayRangeToUtcIso } from "@/lib/booking/uk-pickup-time";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentStatus } from "@/types";
 import { Wallet } from "lucide-react";
@@ -33,16 +38,35 @@ function minusCalendarDays(ymd: string, days: number): string {
 
 function parseTab(value: string | string[] | undefined): FinancesTab {
   const v = Array.isArray(value) ? value[0] : value;
-  if (v === "earnings" || v === "payouts") return v;
-  return "onboarding";
+  if (v === "earnings" || v === "payouts" || v === "onboarding") return v;
+  return "earnings";
 }
 
-function parsePayment(
-  value: string | string[] | undefined,
-): "all" | "paid" | "unpaid" {
-  const v = Array.isArray(value) ? value[0] : value;
-  if (v === "all" || v === "paid" || v === "unpaid") return v;
-  return "paid";
+type EarningsRow = {
+  id: string;
+  reference: string;
+  completed_at: string | null;
+  price: number | null;
+  operator_payout: number | null;
+  payment_status: PaymentStatus;
+  payout_eligible_at: string | null;
+  payout_released_at: string | null;
+};
+
+function formatCompletedAt(iso: string | null): string {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+function earningsAmount(row: EarningsRow): number {
+  return Number(row.operator_payout ?? row.price ?? 0);
 }
 
 function stripeReturnSuccess(
@@ -60,14 +84,6 @@ function formatMoney(n: number): string {
     maximumFractionDigits: 2,
   })}`;
 }
-
-type EarningsRow = {
-  id: string;
-  reference: string;
-  pickup_date: string;
-  price: number | null;
-  payment_status: PaymentStatus;
-};
 
 export default async function OperatorFinancesPage({
   searchParams,
@@ -89,7 +105,6 @@ export default async function OperatorFinancesPage({
     from = to;
     to = t;
   }
-  const payment = parsePayment(searchParams?.payment);
   const fromStripeReturn = stripeReturnSuccess(searchParams);
 
   const { data: operator } = await supabase
@@ -103,33 +118,65 @@ export default async function OperatorFinancesPage({
   let earningsRows: EarningsRow[] = [];
   let earningsTotal = 0;
   let earningsPaidTotal = 0;
+  let summary = {
+    availableTotal: 0,
+    availableCount: 0,
+    canWithdraw: false,
+    withdrawBlockReason: null as string | null,
+    futureTotal: 0,
+    futureActiveAmount: 0,
+    futureClearingAmount: 0,
+    futureActiveCount: 0,
+    futureClearingCount: 0,
+    earningsToDate: 0,
+    earningsToDateCount: 0,
+  };
 
   if (operator?.id && tab === "earnings") {
-    let q = supabase
-      .from("bookings")
-      .select("id, reference, pickup_date, price, payment_status")
-      .eq("operator_id", operator.id)
-      .eq("status", "completed")
-      .gte("pickup_date", from)
-      .lte("pickup_date", to)
-      .order("pickup_date", { ascending: false });
+    const finances = await getOperatorFinancesSummary(supabase, operator.id);
+    const guard = await canReceivePayout(operator.id);
+    summary = {
+      availableTotal: finances.available.totalAmount,
+      availableCount: finances.available.count,
+      canWithdraw: guard.allowed && finances.available.count > 0,
+      withdrawBlockReason: guard.allowed
+        ? finances.available.count === 0
+          ? "No balance available yet. Funds appear here after completed trips pass the payout waiting period."
+          : null
+        : (guard.reason ?? "Complete Stripe payout setup first."),
+      futureTotal: finances.future.totalAmount,
+      futureActiveAmount: finances.future.activeAmount,
+      futureClearingAmount: finances.future.clearingAmount,
+      futureActiveCount: finances.future.activeCount,
+      futureClearingCount: finances.future.clearingCount,
+      earningsToDate: finances.earningsToDate,
+      earningsToDateCount: finances.earningsToDateCount,
+    };
 
-    if (payment === "paid") {
-      q = q.eq("payment_status", "paid");
-    } else if (payment === "unpaid") {
-      q = q.eq("payment_status", "unpaid");
-    }
+    const range = ukCalendarDayRangeToUtcIso(from, to);
+    if (range) {
+      const { data: rows } = await supabase
+        .from("bookings")
+        .select(
+          "id, reference, completed_at, price, operator_payout, payment_status, payout_eligible_at, payout_released_at",
+        )
+        .eq("operator_id", operator.id)
+        .eq("status", "completed")
+        .not("completed_at", "is", null)
+        .gte("completed_at", range.startIso)
+        .lte("completed_at", range.endIso)
+        .order("completed_at", { ascending: false });
 
-    const { data: rows } = await q;
-    earningsRows = (rows ?? []) as EarningsRow[];
-    for (const r of earningsRows) {
-      const p = Number(r.price ?? 0);
-      earningsTotal += p;
-      if (r.payment_status === "paid") earningsPaidTotal += p;
+      earningsRows = (rows ?? []) as EarningsRow[];
+      for (const r of earningsRows) {
+        const p = earningsAmount(r);
+        earningsTotal += p;
+        if (r.payment_status === "paid") earningsPaidTotal += p;
+      }
     }
   }
 
-  const earningsQuery = { from, to, payment };
+  const earningsQuery = { from, to };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -190,8 +237,8 @@ export default async function OperatorFinancesPage({
               Earnings
             </h2>
             <p className="mt-1 text-sm text-content/70">
-              Completed trips in the date range (pickup date). Filter by how
-              the customer payment was recorded.
+              Summary balances above; trip history below is filtered by
+              completion date.
             </p>
 
             {!operator ? (
@@ -207,6 +254,22 @@ export default async function OperatorFinancesPage({
               </p>
             ) : (
               <>
+                <div className="mt-5">
+                  <OperatorFinancesSummaryCards
+                    availableTotal={summary.availableTotal}
+                    availableCount={summary.availableCount}
+                    canWithdraw={summary.canWithdraw}
+                    withdrawBlockReason={summary.withdrawBlockReason}
+                    futureTotal={summary.futureTotal}
+                    futureActiveAmount={summary.futureActiveAmount}
+                    futureClearingAmount={summary.futureClearingAmount}
+                    futureActiveCount={summary.futureActiveCount}
+                    futureClearingCount={summary.futureClearingCount}
+                    earningsToDate={summary.earningsToDate}
+                    earningsToDateCount={summary.earningsToDateCount}
+                  />
+                </div>
+
                 <form
                   className="mt-5 flex flex-wrap items-end gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4"
                   method="get"
@@ -217,7 +280,7 @@ export default async function OperatorFinancesPage({
                       htmlFor="earn-from"
                       className="text-xs font-semibold uppercase tracking-wide text-content/60"
                     >
-                      From
+                      Completed from
                     </label>
                     <input
                       id="earn-from"
@@ -232,7 +295,7 @@ export default async function OperatorFinancesPage({
                       htmlFor="earn-to"
                       className="text-xs font-semibold uppercase tracking-wide text-content/60"
                     >
-                      To
+                      Completed to
                     </label>
                     <input
                       id="earn-to"
@@ -241,24 +304,6 @@ export default async function OperatorFinancesPage({
                       defaultValue={to}
                       className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-content shadow-sm focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25"
                     />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label
-                      htmlFor="earn-payment"
-                      className="text-xs font-semibold uppercase tracking-wide text-content/60"
-                    >
-                      Payment
-                    </label>
-                    <select
-                      id="earn-payment"
-                      name="payment"
-                      defaultValue={payment}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-content shadow-sm focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/25"
-                    >
-                      <option value="paid">Paid only</option>
-                      <option value="unpaid">Unpaid only</option>
-                      <option value="all">All</option>
-                    </select>
                   </div>
                   <button
                     type="submit"
@@ -270,48 +315,25 @@ export default async function OperatorFinancesPage({
 
                 <div className="mt-4 flex flex-wrap gap-2 text-xs">
                   <Link
-                    href={`/operator/finances?tab=earnings&from=${minusCalendarDays(today, 7)}&to=${today}&payment=${payment}`}
+                    href={`/operator/finances?tab=earnings&from=${minusCalendarDays(today, 7)}&to=${today}`}
                     className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-content/80 hover:bg-slate-100"
                   >
                     Last 7 days
                   </Link>
                   <Link
-                    href={`/operator/finances?tab=earnings&from=${minusCalendarDays(today, 30)}&to=${today}&payment=${payment}`}
+                    href={`/operator/finances?tab=earnings&from=${minusCalendarDays(today, 30)}&to=${today}`}
                     className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-content/80 hover:bg-slate-100"
                   >
                     Last 30 days
                   </Link>
                   <Link
-                    href={`/operator/finances?tab=earnings&from=${today.slice(0, 8)}01&to=${today}&payment=${payment}`}
+                    href={`/operator/finances?tab=earnings&from=${today.slice(0, 8)}01&to=${today}`}
                     className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-content/80 hover:bg-slate-100"
                   >
                     Month to date
                   </Link>
                 </div>
 
-                <dl className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-content/60">
-                      Total (in range)
-                    </dt>
-                    <dd className="mt-1 text-xl font-bold text-primary">
-                      {formatMoney(earningsTotal)}
-                    </dd>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-content/60">
-                      Paid portion
-                    </dt>
-                    <dd className="mt-1 text-xl font-bold text-primary">
-                      {formatMoney(earningsPaidTotal)}
-                    </dd>
-                    {payment === "all" ? (
-                      <p className="mt-1 text-xs text-content/60">
-                        Subset with payment status &quot;paid&quot;.
-                      </p>
-                    ) : null}
-                  </div>
-                </dl>
 
                 {earningsRows.length === 0 ? (
                   <p className="mt-6 text-sm text-content/70">
@@ -322,9 +344,10 @@ export default async function OperatorFinancesPage({
                     <table className="min-w-full divide-y divide-slate-200 text-sm">
                       <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-content/70">
                         <tr>
-                          <th className="px-4 py-3">Date</th>
+                          <th className="px-4 py-3">Completed</th>
                           <th className="px-4 py-3">Reference</th>
-                          <th className="px-4 py-3">Price</th>
+                          <th className="px-4 py-3">Earnings</th>
+                          <th className="px-4 py-3">Payout release</th>
                           <th className="px-4 py-3">Payment</th>
                         </tr>
                       </thead>
@@ -332,13 +355,19 @@ export default async function OperatorFinancesPage({
                         {earningsRows.map((r) => (
                           <tr key={r.id} className="bg-white">
                             <td className="whitespace-nowrap px-4 py-3 text-content/90">
-                              {r.pickup_date}
+                              {formatCompletedAt(r.completed_at)}
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-content">
                               {r.reference}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 font-medium text-content">
-                              {formatMoney(Number(r.price ?? 0))}
+                              {formatMoney(earningsAmount(r))}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-sm">
+                              <PayoutReleaseCountdown
+                                payout_eligible_at={r.payout_eligible_at}
+                                payout_released_at={r.payout_released_at}
+                              />
                             </td>
                             <td className="px-4 py-3 capitalize text-content/80">
                               {r.payment_status}

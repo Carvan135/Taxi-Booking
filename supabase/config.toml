@@ -41,3 +41,6 @@ enable_signup = true
 double_confirm_changes = false
 # Disable email confirmation for faster local sign-up / sign-in
 enable_confirmations = false
+
+[functions.auto-complete]
+verify_jwt = true

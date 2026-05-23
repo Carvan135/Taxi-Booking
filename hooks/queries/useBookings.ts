@@ -6,48 +6,14 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { Booking, VehicleType } from "@/types";
+import type { Booking } from "@/types";
+import { bookingKeys } from "./keys";
+
+export type { CustomerBookingRow } from "@/types";
 
 const DEFAULT_STALE_TIME = 1000 * 60;
 
-/** Row returned from `bookings` with embedded `operators` (Supabase FK name). */
-export type CustomerBookingRow = Booking & {
-  operators: {
-    id: string;
-    business_name: string;
-    vehicle_type: VehicleType;
-  } | null;
-};
-
-export function useMyBookings() {
-  const supabase = createClient();
-
-  return useQuery({
-    queryKey: ["bookings", "customer"],
-    queryFn: async (): Promise<CustomerBookingRow[]> => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from("bookings")
-        .select(
-          `
-          *,
-          operators!bookings_operator_id_fkey ( id, business_name, vehicle_type )
-        `,
-        )
-        .eq("customer_id", user.id)
-        .order("pickup_date", { ascending: false })
-        .order("pickup_time", { ascending: false });
-
-      if (error) throw error;
-      return (data ?? []) as CustomerBookingRow[];
-    },
-    staleTime: DEFAULT_STALE_TIME,
-  });
-}
+export { useMyBookings } from "./useBooking";
 
 export function useCancelMyBooking() {
   const supabase = createClient();
@@ -61,7 +27,7 @@ export function useCancelMyBooking() {
       if (error) throw error;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["bookings", "customer"] });
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.customer });
     },
   });
 }
@@ -70,7 +36,7 @@ export function useOperatorBookings() {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["bookings", "operator"],
+    queryKey: bookingKeys.operator,
     queryFn: async (): Promise<Booking[]> => {
       const {
         data: { user },

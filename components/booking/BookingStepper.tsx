@@ -2,9 +2,9 @@ import { Check } from "lucide-react";
 import { Fragment } from "react";
 
 const STEPS = [
-  { step: 1 as const, label: "Enter Details", short: "Details" },
-  { step: 2 as const, label: "Select Operator", short: "Operator" },
-  { step: 3 as const, label: "Payment", short: "Pay" },
+  { step: 1 as const, label: "Journey Details", short: "Journey" },
+  { step: 2 as const, label: "Choose Operator", short: "Operator" },
+  { step: 3 as const, label: "Payment", short: "Payment" },
 ] as const;
 
 type BookingStepperProps = {
@@ -13,17 +13,17 @@ type BookingStepperProps = {
 
 export function BookingStepper({ currentStep }: BookingStepperProps) {
   return (
-    <div className="mb-5 sm:mb-6">
-      <div className="mx-auto flex max-w-md items-start justify-center px-0.5 sm:max-w-lg">
+    <div className="mb-6 sm:mb-8">
+      <div className="mx-auto flex max-w-lg items-start justify-center px-0.5 sm:max-w-xl">
         {STEPS.map(({ step, label, short }, index) => {
           const done = currentStep > step;
           const active = currentStep === step;
 
           return (
             <Fragment key={step}>
-              <div className="flex w-16 shrink-0 flex-col items-center sm:w-24">
+              <div className="flex w-[4.5rem] shrink-0 flex-col items-center sm:w-28">
                 <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors sm:h-9 sm:w-9 sm:text-sm ${
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-colors sm:h-10 sm:w-10 sm:text-sm ${
                     done
                       ? "bg-emerald-500 text-white"
                       : active
@@ -34,7 +34,7 @@ export function BookingStepper({ currentStep }: BookingStepperProps) {
                 >
                   {done ? (
                     <Check
-                      className="h-4 w-4 sm:h-4 sm:w-4"
+                      className="h-4 w-4 sm:h-5 sm:w-5"
                       strokeWidth={2.5}
                       aria-hidden
                     />
@@ -43,12 +43,12 @@ export function BookingStepper({ currentStep }: BookingStepperProps) {
                   )}
                 </div>
                 <p
-                  className={`mt-1.5 text-center text-[10px] font-medium leading-tight sm:mt-2 sm:text-xs ${
+                  className={`mt-2 text-center text-[10px] font-semibold leading-tight sm:text-xs ${
                     active
                       ? "text-secondary"
                       : done
                         ? "text-emerald-700"
-                        : "text-content/50"
+                        : "text-content/45"
                   }`}
                 >
                   <span className="sm:hidden">{short}</span>
@@ -58,9 +58,9 @@ export function BookingStepper({ currentStep }: BookingStepperProps) {
                 </p>
               </div>
               {index < STEPS.length - 1 ? (
-                <div className="flex min-h-9 min-w-0 flex-1 items-center self-start px-0.5 pt-4 sm:min-h-10 sm:px-1.5 sm:pt-[18px]">
+                <div className="flex min-h-10 min-w-0 flex-1 items-center self-start px-0.5 pt-5 sm:px-2 sm:pt-5">
                   <div
-                    className={`h-0.5 w-full rounded-full ${
+                    className={`h-0.5 w-full rounded-full transition-colors ${
                       currentStep > step ? "bg-secondary" : "bg-slate-200"
                     }`}
                     aria-hidden
