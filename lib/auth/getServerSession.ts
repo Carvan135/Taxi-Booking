@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { getProfile, getUser } from "@/lib/auth/helpers";
+import { getSupabasePublicEnv } from "@/lib/env/supabase-public";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile, UserRole } from "@/types";
 
@@ -13,13 +14,13 @@ export type ServerSession = {
  * Server-only session helper for Route Handlers and Server Components.
  */
 export async function getServerSession(): Promise<ServerSession | null> {
+  if (!getSupabasePublicEnv()) return null;
+
   const supabase = createClient();
   const user = await getUser(supabase);
-  console.log("getServerSession", user);
   if (!user) return null;
 
   const profile = await getProfile(supabase, user.id);
-  console.log("profile", profile);
   if (!profile) return null;
 
   return { user, profile, role: profile.role };

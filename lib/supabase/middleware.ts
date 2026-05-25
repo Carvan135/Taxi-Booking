@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   getDashboardPathForRole,
 } from "@/lib/auth/routes";
+import { getSupabasePublicEnv } from "@/lib/env/supabase-public";
 import type { UserRole } from "@/types";
 
 /**
@@ -65,13 +66,18 @@ function mergeCookies(from: NextResponse, to: NextResponse): void {
  * Refreshes the Supabase session from cookies and enforces route-level role rules.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
+  const supabaseEnv = getSupabasePublicEnv();
+  if (!supabaseEnv) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseEnv.url,
+    supabaseEnv.anonKey,
     {
       cookies: {
         getAll() {
