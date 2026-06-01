@@ -14,7 +14,7 @@ import {
   type OperatorApplicationCore,
 } from "@/lib/actions/operatorOnboarding";
 import { operatorApplicationSchema } from "@/lib/validations/operator";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types";
 
@@ -149,7 +149,7 @@ export async function signUp(
     if (operatorApplication) {
       const appResult = await upsertOperatorApplicationForUser(
         supabase,
-        createdUser.id,
+        userId,
         { ...operatorApplication, license_document_url: "" },
         { requireLicense: false },
       );
