@@ -89,7 +89,7 @@ export async function resolveDisputeOperatorWins(
     return { success: false, error: "Booking is not in dispute." };
   }
 
-  const payoutDelayHours = await getPayoutDelayHours();
+  const payoutDelayHours = await getPayoutDelayHours(supabase);
   const now = new Date();
   const payoutEligibleAt = addHours(now, payoutDelayHours);
 

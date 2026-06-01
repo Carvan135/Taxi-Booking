@@ -30,7 +30,7 @@ export async function markBookingComplete(
     };
   }
 
-  const delayHours = await getPayoutDelayHours();
+  const delayHours = await getPayoutDelayHours(supabase);
   const now = new Date();
   const completedAt = now.toISOString();
   const payoutEligibleAt = new Date(

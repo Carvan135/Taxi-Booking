@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export type ClaimBookingsResult =
@@ -43,7 +43,15 @@ export async function claimBookingsForAuthenticatedUser(): Promise<ClaimBookings
     };
   }
 
-  const admin = createAdminClient();
+  const admin = tryCreateAdminClient();
+  if (!admin) {
+    console.error("claimBookings: SUPABASE_SERVICE_ROLE_KEY is not configured");
+    return {
+      success: false,
+      error: "Server configuration error. Please try again later.",
+      status: 500,
+    };
+  }
   const normalizedEmail = email.trim();
   const { data, error } = await admin
     .from("bookings")

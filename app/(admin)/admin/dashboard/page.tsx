@@ -154,7 +154,7 @@ export default async function AdminDashboardPage() {
   const lastMonthRevenue =
     lastMonthRevRows?.reduce((s, r) => s + Number(r.price ?? 0), 0) ?? 0;
 
-  const commissionPercent = await getCommissionPercentage();
+  const commissionPercent = await getCommissionPercentage(supabase);
   const commissionRate = commissionPercent / 100;
   const thisMonthCommission = thisMonthRevenue * commissionRate;
   const lastMonthCommission = lastMonthRevenue * commissionRate;
@@ -381,7 +381,7 @@ export default async function AdminDashboardPage() {
                     {formatMoneyGBP(thisMonthCommission)}
                   </p>
                   <p className="mt-1 text-xs text-[#6B7280]">
-                    15% platform commission
+                    {commissionPercent}% platform commission
                   </p>
                   {commissionPct !== null && lastMonthCommission > 0 ? (
                     <p className="mt-0.5 text-xs font-medium text-[#10B981]">

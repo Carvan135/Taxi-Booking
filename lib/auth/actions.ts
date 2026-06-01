@@ -63,39 +63,74 @@ export async function signUp(
 
   // Operators should be able to start onboarding immediately (no email confirmation gate).
   if (role === "operator") {
-    const admin = createAdminClient();
+    const admin = tryCreateAdminClient();
+    let userId: string | undefined;
 
-    const { data: created, error: createError } =
-      await admin.auth.admin.createUser({
+    if (admin) {
+      const { data: created, error: createError } =
+        await admin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name, name: full_name, role: "operator" },
+        });
+
+      if (createError) {
+        return { success: false, error: createError.message };
+      }
+
+      userId = created.user?.id;
+      if (!userId) {
+        return { success: false, error: "Could not create operator account." };
+      }
+
+      const { data: signInData, error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+      if (signInError || !signInData.session) {
+        return {
+          success: false,
+          error:
+            signInError?.message ??
+            "Account created, but could not start a session. Try signing in.",
+        };
+      }
+    } else {
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        email_confirm: true,
-        user_metadata: { full_name, name: full_name, role: "operator" },
+        options: {
+          data: {
+            full_name,
+            name: full_name,
+            role: "operator",
+          },
+        },
       });
 
-    if (createError) {
-      return { success: false, error: createError.message };
-    }
+      if (signUpError) {
+        return { success: false, error: signUpError.message };
+      }
 
-    const createdUser = created.user;
-    if (!createdUser) {
-      return { success: false, error: "Could not create operator account." };
-    }
+      userId = authData.user?.id;
+      if (!userId) {
+        return {
+          success: false,
+          error:
+            "Could not create operator account. Confirm your email if required, or ask an admin to configure SUPABASE_SERVICE_ROLE_KEY on the server.",
+        };
+      }
 
-    // Create a real session so the client can continue onboarding immediately.
-    const { data: signInData, error: signInError } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-    if (signInError || !signInData.session) {
-      return {
-        success: false,
-        error:
-          signInError?.message ??
-          "Account created, but could not start a session. Try signing in.",
-      };
+      if (!authData.session) {
+        return {
+          success: false,
+          error:
+            "Check your email to confirm your account, then sign in to finish onboarding.",
+        };
+      }
     }
 
     const { error: profileError } = await supabase
@@ -105,7 +140,7 @@ export async function signUp(
         phone: phone?.trim() ? phone.trim() : null,
         role: "operator",
       })
-      .eq("id", createdUser.id);
+      .eq("id", userId);
 
     if (profileError) {
       return { success: false, error: profileError.message };
