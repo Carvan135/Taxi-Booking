@@ -1,4 +1,4 @@
-import { route, type GeoPlace } from "@/lib/maps/geoapify";
+import { route, type GeoPlace } from "@/lib/maps/geoapify-client";
 import type { BookingRoute } from "@/lib/booking/booking-session-types";
 
 export type { BookingRoute };

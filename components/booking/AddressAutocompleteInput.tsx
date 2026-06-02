@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { BOOK_TRIP_INPUT_CLASS } from "@/components/booking/booking-form-styles";
-import { autocomplete, type GeoPlace } from "@/lib/maps/geoapify";
+import { autocomplete, type GeoPlace } from "@/lib/maps/geoapify-client";
 
 const DEBOUNCE_MS = 400;
 

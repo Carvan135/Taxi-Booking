@@ -17,7 +17,7 @@ import { AddressAutocompleteInput } from "@/components/booking/AddressAutocomple
 import { BookingStepper } from "@/components/booking/BookingStepper";
 import { calculateTripDistance } from "@/lib/booking/route-calculator";
 import type { BookingPlace } from "@/lib/booking/booking-session-types";
-import { geocode, type GeoPlace } from "@/lib/maps/geoapify";
+import { geocode, type GeoPlace } from "@/lib/maps/geoapify-client";
 import { MAX_BOOKING_LUGGAGE } from "@/lib/booking/luggage-display";
 import { SERVICE_TYPES } from "@/lib/validations/enums";
 import {
