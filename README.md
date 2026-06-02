@@ -106,7 +106,9 @@ If the app is deployed to Cloudflare Workers (for example `*.workers.dev`), **ev
    - **`SUPABASE_SERVICE_ROLE_KEY`** (required for operator sign-up, webhooks, booking APIs, and guest booking claim; admin dashboard reads settings via the signed-in admin session when this key is missing, but onboarding and payments still need it)
    - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
    - `NEXT_PUBLIC_APP_URL` (your Workers URL, e.g. `https://taxi-booking.example.workers.dev`)
+   - **`GEOAPIFY_API_KEY`** (address autocomplete; use a server key without HTTP referrer restrictions)
 2. Redeploy after changing secrets.
+3. Verify: `GET /api/health` should show `"geoapifyConfigured": true`.
 3. **Symptom:** “Application error: a server-side exception has occurred” on `/admin/dashboard` or after sign-in usually means a required secret (often `SUPABASE_SERVICE_ROLE_KEY`) was missing at runtime.
 
 ## Supabase auto-complete cron

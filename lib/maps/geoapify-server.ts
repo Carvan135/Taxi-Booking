@@ -3,6 +3,8 @@
  * Uses GEOAPIFY_API_KEY (preferred) or NEXT_PUBLIC_GEOAPIFY_API_KEY (fallback).
  */
 
+import { getGeoapifyApiKey } from "@/lib/env/geoapify";
+
 const GEOAPIFY_BASE = "https://api.geoapify.com/v1";
 const UK_FILTER = "countrycode:gb";
 
@@ -26,6 +28,7 @@ type GeoapifyProperties = {
 
 type GeoapifyFeature = {
   properties?: GeoapifyProperties;
+  geometry?: { coordinates?: [number, number] };
 };
 
 type AutocompleteResponse = {
@@ -67,13 +70,26 @@ function distanceToMiles(distance: number, units?: string): number {
 }
 
 function getApiKey(): string {
-  const key =
-    process.env.GEOAPIFY_API_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY?.trim();
+  const key = getGeoapifyApiKey();
   if (!key) {
     throw new Error("Geoapify API key is not configured");
   }
   return key;
+}
+
+function getCoordinates(feature: GeoapifyFeature): { lat: number; lng: number } | null {
+  const props = feature.properties;
+  if (typeof props?.lat === "number" && typeof props?.lon === "number") {
+    return { lat: props.lat, lng: props.lon };
+  }
+  const coords = feature.geometry?.coordinates;
+  if (coords && coords.length >= 2) {
+    const [lng, lat] = coords;
+    if (typeof lat === "number" && typeof lng === "number") {
+      return { lat, lng };
+    }
+  }
+  return null;
 }
 
 function buildUrl(path: string, params: Record<string, string>): string {
@@ -119,11 +135,9 @@ export function normalizePlace(feature: GeoapifyFeature): GeoPlace | null {
   const props = feature.properties;
   if (!props) return null;
 
-  const lat = props.lat;
-  const lon = props.lon;
-  if (typeof lat !== "number" || typeof lon !== "number") {
-    return null;
-  }
+  const coords = getCoordinates(feature);
+  if (!coords) return null;
+  const { lat, lng: lon } = coords;
 
   const label =
     props.formatted?.trim() ||
