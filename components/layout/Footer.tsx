@@ -101,7 +101,7 @@ export function Footer() {
             © {year} TaxiBook. All rights reserved.
           </p>
           <Link
-            href="/login?redirect=/admin/dashboard"
+            href="/login/admin?redirect=/admin/dashboard"
             className="text-xs text-slate-500 transition hover:text-slate-300"
           >
             Admin

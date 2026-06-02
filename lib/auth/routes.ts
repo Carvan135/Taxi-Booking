@@ -13,6 +13,18 @@ export function getDashboardPathForRole(role: UserRole): string {
   }
 }
 
+export function getLoginPathForRole(role: UserRole): string {
+  switch (role) {
+    case "admin":
+      return "/login/admin";
+    case "operator":
+      return "/login/operator";
+    case "customer":
+    default:
+      return "/login";
+  }
+}
+
 /**
  * Returns a same-origin path safe for open redirects after login, or null.
  */

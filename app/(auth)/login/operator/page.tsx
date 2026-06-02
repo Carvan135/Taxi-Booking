@@ -9,7 +9,7 @@ import {
 export default function OperatorLoginPage() {
   return (
     <Suspense fallback={<LoginFormCardFallback />}>
-      <LoginForm variant="operator" />
+      <LoginForm variant="operator" allowedRoles={["operator"]} />
     </Suspense>
   );
 }

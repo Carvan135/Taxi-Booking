@@ -214,6 +214,7 @@ export async function signUp(
 
 export async function signIn(
   data: SignInFormData,
+  options?: { allowedRoles?: UserRole[] },
 ): Promise<AuthActionResult> {
   const parsed = signInSchema.safeParse(data);
   if (!parsed.success) {
@@ -249,6 +250,20 @@ export async function signIn(
   }
 
   const role = profile.role as UserRole;
+
+  const allowedRoles = options?.allowedRoles;
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+    await supabase.auth.signOut();
+    const target =
+      allowedRoles.length === 1
+        ? allowedRoles[0]
+        : `${allowedRoles.join(", ")}`;
+    return {
+      success: false,
+      error: `This account is ${role}. Please sign in using the correct portal (${target}).`,
+    };
+  }
+
   const claimed = await claimGuestBookingsIfCustomer(role);
 
   return { success: true, role, claimed };

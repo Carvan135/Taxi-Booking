@@ -6,10 +6,11 @@ import {
   LoginFormCardFallback,
 } from "@/components/auth/LoginForm";
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
   return (
     <Suspense fallback={<LoginFormCardFallback />}>
-      <LoginForm variant="rider" allowedRoles={["customer"]} />
+      <LoginForm variant="rider" allowedRoles={["admin"]} />
     </Suspense>
   );
 }
+

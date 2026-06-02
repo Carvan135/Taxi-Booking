@@ -22,9 +22,10 @@ export type LoginFormVariant = "rider" | "operator";
 
 type LoginFormProps = {
   variant?: LoginFormVariant;
+  allowedRoles?: Array<"customer" | "operator" | "admin">;
 };
 
-export function LoginForm({ variant = "rider" }: LoginFormProps) {
+export function LoginForm({ variant = "rider", allowedRoles }: LoginFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
@@ -48,7 +49,7 @@ export function LoginForm({ variant = "rider" }: LoginFormProps) {
 
   const onSubmit = handleSubmit(async (data) => {
     setSubmitError(null);
-    const result = await signIn(data);
+    const result = await signIn(data, { allowedRoles });
 
     if (!result.success) {
       setSubmitError(result.error ?? "Sign in failed.");

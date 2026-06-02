@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   getDashboardPathForRole,
+  getLoginPathForRole,
 } from "@/lib/auth/routes";
 import { getSupabasePublicEnv } from "@/lib/env/supabase-public";
 import type { UserRole } from "@/types";
@@ -145,7 +146,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
       return res;
     }
     if (!role) {
-      const loginUrl = new URL("/login", request.url);
+      const loginUrl = new URL(getLoginPathForRole("customer"), request.url);
       loginUrl.searchParams.set("redirect", pathname);
       const res = NextResponse.redirect(loginUrl);
       mergeCookies(supabaseResponse, res);
@@ -167,7 +168,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   if (!user) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL(getLoginPathForRole(neededRole), request.url);
     loginUrl.searchParams.set("redirect", `${pathname}${search}`);
     const res = NextResponse.redirect(loginUrl);
     mergeCookies(supabaseResponse, res);
@@ -175,7 +176,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   if (!role) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL(getLoginPathForRole(neededRole), request.url);
     loginUrl.searchParams.set("redirect", `${pathname}${search}`);
     const res = NextResponse.redirect(loginUrl);
     mergeCookies(supabaseResponse, res);

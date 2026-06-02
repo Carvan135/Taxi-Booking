@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
-import { getDashboardPathForRole } from "@/lib/auth/routes";
+import { getDashboardPathForRole, getLoginPathForRole } from "@/lib/auth/routes";
 import type { Profile, UserRole } from "@/types";
 
 export async function getUser(
@@ -43,12 +43,11 @@ export async function requireRole(
   role: UserRole | UserRole[],
 ): Promise<{ user: User; profile: Profile }> {
   const user = await getUser(supabase);
-  if (!user) redirect("/login");
+  const allowed = Array.isArray(role) ? role : [role];
+  if (!user) redirect(getLoginPathForRole(allowed[0] ?? "customer"));
 
   const profile = await getProfile(supabase, user.id);
-  if (!profile) redirect("/login");
-
-  const allowed = Array.isArray(role) ? role : [role];
+  if (!profile) redirect(getLoginPathForRole(allowed[0] ?? "customer"));
   if (!allowed.includes(profile.role)) {
     redirect(getDashboardPathForRole(profile.role));
   }
