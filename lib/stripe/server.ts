@@ -16,6 +16,12 @@ export function getStripeServer(): Stripe {
       /** Matches stripe@22 pinned OpenAPI version — update when upgrading `stripe`. */
       apiVersion: "2026-04-22.dahlia",
       typescript: true,
+      /**
+       * Cloudflare Workers (OpenNext) has no Node http/https stack, so the SDK's
+       * default client fails with "connection to Stripe" errors. Use the
+       * Workers-native fetch-based client instead.
+       */
+      httpClient: Stripe.createFetchHttpClient(),
     });
   }
   return stripeSingleton;
