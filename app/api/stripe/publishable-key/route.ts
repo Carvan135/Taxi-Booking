@@ -2,7 +2,7 @@ import { stripePublishableKeyResponse } from "@/lib/stripe/stripe-config-respons
 
 export const dynamic = "force-dynamic";
 
-/** Runtime Stripe.js config — works when NEXT_PUBLIC_* was not inlined at build time. */
+/** Alias for /api/stripe/config — avoids reserved "config" path issues on some hosts. */
 export async function GET() {
   return stripePublishableKeyResponse();
 }

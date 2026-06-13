@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { paymentIntentBodySchema } from "@/lib/booking/api-schemas";
 import { setupPaymentIntentForTrip } from "@/lib/stripe/setup-payment-intent";
+import { stripePublishableKeyResponse } from "@/lib/stripe/stripe-config-response";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+
+/** Publishable key for Stripe.js when not available at client build time. */
+export async function GET() {
+  return stripePublishableKeyResponse();
+}
 
 export async function POST(req: Request) {
   try {

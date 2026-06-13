@@ -2,9 +2,35 @@ import { loadStripe, type Stripe } from "@stripe/stripe-js";
 
 let stripePromise: Promise<Stripe | null> | null = null;
 
+type StripeConfigBody = {
+  publishableKey?: string;
+};
+
+async function fetchPublishableKeyFromApi(): Promise<string | null> {
+  const endpoints = [
+    "/api/stripe/payment-intent",
+    "/api/stripe/config",
+    "/api/health",
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const body = (await res.json()) as StripeConfigBody;
+      const key = body.publishableKey?.trim();
+      if (key) return key;
+    } catch {
+      /* try next endpoint */
+    }
+  }
+
+  return null;
+}
+
 /**
  * Load Stripe.js using the build-time key when present, otherwise fetch from
- * `/api/stripe/config` at runtime (required on Cloudflare when NEXT_PUBLIC_* is
+ * known API routes at runtime (required on Cloudflare when NEXT_PUBLIC_* is
  * only set as a deploy secret, not a build variable).
  */
 export function getStripePromise(): Promise<Stripe | null> {
@@ -15,15 +41,9 @@ export function getStripePromise(): Promise<Stripe | null> {
         return loadStripe(bundled);
       }
 
-      try {
-        const res = await fetch("/api/stripe/config");
-        if (!res.ok) return null;
-        const body = (await res.json()) as { publishableKey?: string };
-        if (!body.publishableKey?.trim()) return null;
-        return loadStripe(body.publishableKey.trim());
-      } catch {
-        return null;
-      }
+      const key = await fetchPublishableKeyFromApi();
+      if (!key) return null;
+      return loadStripe(key);
     })();
   }
   return stripePromise;
