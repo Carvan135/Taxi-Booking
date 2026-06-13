@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { paymentIntentBodySchema } from "@/lib/booking/api-schemas";
 import { setupPaymentIntentForTrip } from "@/lib/stripe/setup-payment-intent";
+import { stripeClientApiFields } from "@/lib/stripe/stripe-api-fields";
 import { stripePublishableKeyResponse } from "@/lib/stripe/stripe-config-response";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
       stripe_ready: setup.stripe_ready,
       quote: setup.quote,
       reused: setup.reused,
+      ...stripeClientApiFields(),
     });
   } catch (err) {
     console.error("payment-intent error:", err);

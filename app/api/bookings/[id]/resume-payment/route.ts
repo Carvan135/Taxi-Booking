@@ -6,6 +6,7 @@ import {
   isPaymentIntentReusable,
   paymentIntentAmountMatches,
 } from "@/lib/stripe/payment-intent-utils";
+import { stripeClientApiFields } from "@/lib/stripe/stripe-api-fields";
 import { getStripeServer } from "@/lib/stripe/server";
 import {
   BOOKING_STATUS,
@@ -203,6 +204,7 @@ export async function POST(req: Request, context: RouteContext) {
       booking_reference: booking.reference,
       booking_id: booking.id,
       reused,
+      ...stripeClientApiFields(),
     });
   } catch (err) {
     console.error("resume-payment error:", err);

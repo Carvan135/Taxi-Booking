@@ -27,3 +27,17 @@ Required for address autocomplete / geocoding:
 | `GEOAPIFY_API_KEY` | Server-side Geoapify key (recommended). Use a key **without** HTTP referrer restrictions, or Geoapify will reject Worker `fetch` calls. |
 
 After deploy, check `GET /api/health` — `geoapifyConfigured` must be `true`. If autocomplete returns `503` with `geoapify_not_configured`, add the variable and redeploy.
+
+### Stripe (payment step)
+
+| Variable | Where to set | Notes |
+|----------|----------------|-------|
+| `STRIPE_SECRET_KEY` | Runtime secret | Server-side PaymentIntent creation |
+| `STRIPE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | **Build** variable (recommended) + runtime | Publishable key for Stripe.js. On Workers, runtime-only `NEXT_PUBLIC_*` is **not** inlined into the client bundle — set it as a **Build** variable, or rely on `publishable_key` returned by `POST /api/stripe/payment-intent` after deploy. |
+| `STRIPE_WEBHOOK_SECRET` | Runtime secret | Webhook signature verification |
+
+After deploy, verify:
+
+- `GET /api/health` includes `stripePublishableKeyConfigured: true`
+- `POST /api/stripe/payment-intent` returns `publishable_key` and `client_secret`
+- `/payment` shows the Stripe card form (not only the page header)

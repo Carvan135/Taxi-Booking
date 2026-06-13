@@ -1,11 +1,11 @@
 "use client";
 
-import {
-  Elements,
+import { Elements,
   PaymentElement,
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
+import type { Stripe } from "@stripe/stripe-js";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,7 @@ import {
   saveConfirmationReference,
   saveTaxibookGuestSession,
 } from "@/lib/booking/session";
-import { getStripePromise } from "@/lib/stripe/load-stripe-client";
+import { getStripePromise, resolveStripeClient } from "@/lib/stripe/load-stripe-client";
 import type { Booking } from "@/types";
 
 type ResumePaymentCheckoutProps = {
@@ -41,6 +41,7 @@ type ResumePaymentResponse = {
   operator_payout: number;
   booking_reference: string;
   reused?: boolean;
+  publishable_key?: string | null;
   error?: string;
 };
 
@@ -64,6 +65,9 @@ export function ResumePaymentCheckout({
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [elementsStripe, setElementsStripe] = useState<
+    Promise<Stripe | null> | null
+  >(null);
   const sessionStartedRef = useRef(false);
 
   const startPaymentSession = useCallback(async () => {
@@ -88,6 +92,13 @@ export function ResumePaymentCheckout({
         platform_fee: body.platform_fee,
         operator_payout: body.operator_payout,
       });
+      const stripe = await resolveStripeClient(body.publishable_key);
+      if (!stripe) {
+        throw new Error(
+          "Stripe payment is not configured on this site. Please contact support.",
+        );
+      }
+      setElementsStripe(getStripePromise());
       setEmailVerified(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start payment");
@@ -149,7 +160,7 @@ export function ResumePaymentCheckout({
     );
   }
 
-  if (!clientSecret || !session || !elementsOptions) {
+  if (!clientSecret || !session || !elementsOptions || !elementsStripe) {
     return (
       <p className="py-8 text-center text-sm text-content/60">
         Preparing secure payment…
@@ -167,7 +178,7 @@ export function ResumePaymentCheckout({
         </span>
       </p>
 
-      <Elements stripe={getStripePromise()} options={elementsOptions} key={session.payment_intent_id}>
+      <Elements stripe={elementsStripe} options={elementsOptions} key={session.payment_intent_id}>
         <ResumePaymentFormInner
           booking={booking}
           email={email}

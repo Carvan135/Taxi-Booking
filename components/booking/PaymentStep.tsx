@@ -23,7 +23,7 @@ import { quoteToDisplayBreakdown } from "@/lib/booking/quote";
 import type { BookingPriceBreakdown } from "@/lib/booking/pricing";
 import type { BookingQuote } from "@/lib/booking/quote";
 import { loadTaxibookBooking, type TaxibookBookingSession } from "@/lib/booking/session";
-import { getStripePromise } from "@/lib/stripe/load-stripe-client";
+import { getStripePromise, resolveStripeClient } from "@/lib/stripe/load-stripe-client";
 import { useProfile } from "@/hooks/queries/useProfile";
 import { createClient } from "@/lib/supabase/client";
 
@@ -37,6 +37,7 @@ type PaymentIntentResponse = {
   stripe_ready: boolean;
   quote: BookingQuote;
   reused?: boolean;
+  publishable_key?: string | null;
 };
 
 export function PaymentStep() {
@@ -53,6 +54,9 @@ export function PaymentStep() {
   const [stripeClient, setStripeClient] = useState<Stripe | null | undefined>(
     undefined,
   );
+  const [elementsStripe, setElementsStripe] = useState<
+    Promise<Stripe | null> | null
+  >(null);
 
   const { data: profile } = useProfile();
 
@@ -79,6 +83,9 @@ export function PaymentStep() {
   useEffect(() => {
     void getStripePromise().then((stripe) => {
       setStripeClient(stripe);
+      if (stripe) {
+        setElementsStripe(getStripePromise());
+      }
     });
   }, []);
 
@@ -143,6 +150,14 @@ export function PaymentStep() {
       setStripeReady(body.stripe_ready);
       setPricing(quoteToDisplayBreakdown(body.quote));
 
+      const stripe = await resolveStripeClient(body.publishable_key);
+      setStripeClient(stripe);
+      if (stripe) {
+        setElementsStripe(getStripePromise());
+      } else {
+        setElementsStripe(null);
+      }
+
       savePaymentSession({
         payment_intent_id: body.payment_intent_id,
         client_secret: body.client_secret,
@@ -193,7 +208,7 @@ export function PaymentStep() {
 
   const stripeConfigError =
     stripeClient === null
-      ? "Stripe payment is not configured on this site. Add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to your deployment environment and redeploy."
+      ? "Stripe payment is not configured on this site. Add STRIPE_PUBLISHABLE_KEY (or NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) to your Cloudflare environment and redeploy."
       : null;
 
   const paymentReady =
@@ -202,6 +217,7 @@ export function PaymentStep() {
         clientSecret &&
         paymentIntentId &&
         elementsOptions &&
+        elementsStripe &&
         stripeClient,
     ) && !stripeConfigError;
 
@@ -282,11 +298,11 @@ export function PaymentStep() {
         </div>
       ) : null}
 
-      {paymentReady && elementsOptions ? (
+      {paymentReady && elementsOptions && elementsStripe ? (
         <div className="mt-8 grid gap-6 lg:grid-cols-2 lg:gap-8">
           <BookingSummaryCard trip={trip} operator={operator} pricing={pricing!} />
           <Elements
-            stripe={getStripePromise()}
+            stripe={elementsStripe}
             options={elementsOptions}
             key={paymentIntentId}
           >
