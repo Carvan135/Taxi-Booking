@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getEmailFromAddress, isEmailConfigured } from "@/lib/email/config";
 import { isGeoapifyConfigured } from "@/lib/env/geoapify";
+import { isStripePublishableKeyConfigured } from "@/lib/stripe/publishable-key";
 import { hasServiceRoleConfig } from "@/lib/supabase/admin";
 import { isSupabasePublicEnvConfigured } from "@/lib/env/supabase-public";
 
@@ -13,6 +14,7 @@ export async function GET() {
     geoapifyConfigured: isGeoapifyConfigured(),
     emailConfigured: isEmailConfigured(),
     emailFrom: isEmailConfigured() ? getEmailFromAddress() : null,
+    stripePublishableKeyConfigured: isStripePublishableKeyConfigured(),
     nodeEnv: process.env.NODE_ENV ?? "unknown",
   });
 }

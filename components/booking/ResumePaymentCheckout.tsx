@@ -22,7 +22,7 @@ import {
   saveConfirmationReference,
   saveTaxibookGuestSession,
 } from "@/lib/booking/session";
-import { stripePromise } from "@/lib/stripe/client";
+import { getStripePromise } from "@/lib/stripe/load-stripe-client";
 import type { Booking } from "@/types";
 
 type ResumePaymentCheckoutProps = {
@@ -149,7 +149,7 @@ export function ResumePaymentCheckout({
     );
   }
 
-  if (!clientSecret || !session || !elementsOptions || !stripePromise) {
+  if (!clientSecret || !session || !elementsOptions) {
     return (
       <p className="py-8 text-center text-sm text-content/60">
         Preparing secure payment…
@@ -167,7 +167,7 @@ export function ResumePaymentCheckout({
         </span>
       </p>
 
-      <Elements stripe={stripePromise} options={elementsOptions} key={session.payment_intent_id}>
+      <Elements stripe={getStripePromise()} options={elementsOptions} key={session.payment_intent_id}>
         <ResumePaymentFormInner
           booking={booking}
           email={email}

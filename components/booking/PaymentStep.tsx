@@ -1,6 +1,7 @@
 "use client";
 
 import { Elements } from "@stripe/react-stripe-js";
+import type { Stripe } from "@stripe/stripe-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -22,7 +23,7 @@ import { quoteToDisplayBreakdown } from "@/lib/booking/quote";
 import type { BookingPriceBreakdown } from "@/lib/booking/pricing";
 import type { BookingQuote } from "@/lib/booking/quote";
 import { loadTaxibookBooking, type TaxibookBookingSession } from "@/lib/booking/session";
-import { stripePromise } from "@/lib/stripe/client";
+import { getStripePromise } from "@/lib/stripe/load-stripe-client";
 import { useProfile } from "@/hooks/queries/useProfile";
 import { createClient } from "@/lib/supabase/client";
 
@@ -49,6 +50,9 @@ export function PaymentStep() {
   const [isLoadingIntent, setIsLoadingIntent] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [intentGeneration, setIntentGeneration] = useState(0);
+  const [stripeClient, setStripeClient] = useState<Stripe | null | undefined>(
+    undefined,
+  );
 
   const { data: profile } = useProfile();
 
@@ -69,6 +73,12 @@ export function PaymentStep() {
     const supabase = createClient();
     void supabase.auth.getUser().then(({ data: { user } }) => {
       setIsAuthenticated(Boolean(user));
+    });
+  }, []);
+
+  useEffect(() => {
+    void getStripePromise().then((stripe) => {
+      setStripeClient(stripe);
     });
   }, []);
 
@@ -124,6 +134,10 @@ export function PaymentStep() {
         throw new Error(body.error ?? "Could not start payment");
       }
 
+      if (!body.client_secret?.trim() || !body.payment_intent_id?.trim()) {
+        throw new Error("Payment setup returned an invalid response.");
+      }
+
       setClientSecret(body.client_secret);
       setPaymentIntentId(body.payment_intent_id);
       setStripeReady(body.stripe_ready);
@@ -177,6 +191,28 @@ export function PaymentStep() {
     [clientSecret],
   );
 
+  const stripeConfigError =
+    stripeClient === null
+      ? "Stripe payment is not configured on this site. Add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to your deployment environment and redeploy."
+      : null;
+
+  const paymentReady =
+    Boolean(
+      pricing &&
+        clientSecret &&
+        paymentIntentId &&
+        elementsOptions &&
+        stripeClient,
+    ) && !stripeConfigError;
+
+  const showIntentFailure =
+    !isLoadingIntent &&
+    !setupError &&
+    !stripeConfigError &&
+    stripeClient !== undefined &&
+    !paymentReady &&
+    trip?.selected_operator;
+
   if (!trip?.selected_operator) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-content/60">
@@ -219,20 +255,45 @@ export function PaymentStep() {
         </div>
       ) : null}
 
-      {isLoadingIntent && !clientSecret ? (
+      {stripeConfigError ? (
+        <div className="mx-auto mt-8 max-w-lg rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-center text-sm text-amber-950">
+          {stripeConfigError}
+        </div>
+      ) : null}
+
+      {(isLoadingIntent || stripeClient === undefined) && !clientSecret ? (
         <p className="mt-10 text-center text-sm text-content/60">
           Preparing secure payment…
         </p>
       ) : null}
 
-      {pricing && clientSecret && paymentIntentId && elementsOptions && stripePromise ? (
+      {showIntentFailure ? (
+        <div className="mx-auto mt-8 max-w-lg rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-center text-sm text-red-800">
+          Could not load the payment form. Please try again.
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => refreshPaymentIntent()}
+              className="font-semibold text-secondary hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {paymentReady && elementsOptions ? (
         <div className="mt-8 grid gap-6 lg:grid-cols-2 lg:gap-8">
-          <BookingSummaryCard trip={trip} operator={operator} pricing={pricing} />
-          <Elements stripe={stripePromise} options={elementsOptions} key={paymentIntentId}>
+          <BookingSummaryCard trip={trip} operator={operator} pricing={pricing!} />
+          <Elements
+            stripe={getStripePromise()}
+            options={elementsOptions}
+            key={paymentIntentId}
+          >
             <PaymentCheckoutForm
               trip={trip}
-              pricing={pricing}
-              paymentIntentId={paymentIntentId}
+              pricing={pricing!}
+              paymentIntentId={paymentIntentId!}
               profile={profile}
               isAuthenticated={isAuthenticated}
               stripeReady={stripeReady}

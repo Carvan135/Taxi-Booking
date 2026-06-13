@@ -35,10 +35,6 @@ export async function getOperatorPaymentEligibility(
   const stripeAccountId = operator.stripe_account_id?.trim() || null;
   const payoutsEnabled = operator.stripe_payouts_enabled === true;
 
-  if (stripeAccountId && !payoutsEnabled) {
-    throw new Error("Operator payouts are not enabled");
-  }
-
   return {
     id: operator.id,
     vehicle_type: operator.vehicle_type,

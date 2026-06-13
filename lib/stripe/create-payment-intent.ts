@@ -49,10 +49,6 @@ export async function createPaymentIntentForTrip(
   const stripeAccountId = operator.stripe_account_id?.trim() || null;
   const payoutsEnabled = operator.stripe_payouts_enabled === true;
 
-  if (stripeAccountId && !payoutsEnabled) {
-    throw new Error("Operator payouts not enabled");
-  }
-
   const stripeReady = Boolean(stripeAccountId && payoutsEnabled);
 
   const metadata = {

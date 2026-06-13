@@ -1,16 +1,13 @@
-import { loadStripe, type Stripe } from "@stripe/stripe-js";
-
-const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
+import type { Stripe } from "@stripe/stripe-js";
+import { getStripePromise } from "@/lib/stripe/load-stripe-client";
 
 /**
- * Stripe.js loader for the browser (Connect.js / Elements later).
- * `null` when NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is unset.
+ * @deprecated Prefer `getStripePromise()` — supports runtime config on Cloudflare.
+ * Resolves null when the publishable key is unavailable at build time and runtime.
  */
-export const stripePromise = publishableKey
-  ? loadStripe(publishableKey)
-  : null;
+export const stripePromise: Promise<Stripe | null> = getStripePromise();
 
-/** Same instance as `stripePromise` (for call sites that prefer a getter). */
-export function getStripe(): Promise<Stripe | null> | null {
-  return stripePromise;
+/** Same instance as `stripePromise`. */
+export function getStripe(): Promise<Stripe | null> {
+  return getStripePromise();
 }
