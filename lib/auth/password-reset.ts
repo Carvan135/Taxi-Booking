@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 import { formatZodError } from "@/lib/validations";
-import { signInSchema } from "@/lib/validations/auth";
 import { createClient } from "@/lib/supabase/server";
 
 const resetPasswordSchema = z.object({

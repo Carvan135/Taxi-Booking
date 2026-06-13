@@ -67,7 +67,7 @@ export async function fetchAdminBookingDetail(
     booking.cancelled_by,
   ].filter(Boolean) as string[];
 
-  let actors = new Map<string, AdminBookingActor>();
+  const actors = new Map<string, AdminBookingActor>();
   if (actorIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
