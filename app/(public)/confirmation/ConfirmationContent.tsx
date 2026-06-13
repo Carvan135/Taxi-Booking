@@ -8,7 +8,6 @@ import {
   Download,
   Mail,
   MapPin,
-  Phone,
   PoundSterling,
   Users,
 } from "lucide-react";
@@ -28,6 +27,7 @@ import { guestSignUpAndClaimBookingsClient } from "@/lib/guest/account";
 import { signUpSchema } from "@/lib/validations/auth";
 import type { ServiceType } from "@/lib/validations/enums";
 import { createClient } from "@/lib/supabase/client";
+import { SITE_EMAILS } from "@/lib/site/contact";
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
   standard: "Standard",
@@ -80,6 +80,7 @@ export default function ConfirmationContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [guestEmail, setGuestEmail] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimSuccess, setClaimSuccess] = useState(false);
   const confirmationSnapshot = useMemo(() => loadConfirmationSnapshot(), []);
@@ -168,9 +169,74 @@ export default function ConfirmationContent() {
     setIsAuthenticated(true);
   });
 
-  const showReceiptToast = () => {
-    setToast("Coming soon");
-    window.setTimeout(() => setToast(null), 2800);
+  const downloadReceipt = async () => {
+    if (!booking || receiptLoading) return;
+    const legId =
+      booking.legs.find((l) => l.leg === "outbound")?.id ?? booking.legs[0]?.id;
+    if (!legId) {
+      setToast("Could not download receipt.");
+      window.setTimeout(() => setToast(null), 3200);
+      return;
+    }
+
+    setReceiptLoading(true);
+    setToast(null);
+    try {
+      const params = new URLSearchParams();
+      const email = (guestEmail || booking.customer_email).trim();
+      if (email) params.set("email", email);
+
+      const res = await fetch(
+        `/api/bookings/${legId}/receipt?${params.toString()}`,
+      );
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        setToast(body.error ?? "Could not download receipt.");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `receipt-${booking.reference}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setToast("Receipt downloaded.");
+    } catch {
+      setToast("Could not download receipt.");
+    } finally {
+      setReceiptLoading(false);
+      window.setTimeout(() => setToast(null), 3200);
+    }
+  };
+
+  const resendConfirmationEmail = async () => {
+    if (!booking) return;
+    setToast(null);
+    try {
+      const res = await fetch("/api/bookings/send-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reference: booking.reference,
+          email: (guestEmail || booking.customer_email).trim() || undefined,
+        }),
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setToast(body.error ?? "Could not resend email. Check admin email log.");
+      } else {
+        setToast("Confirmation email sent from AirportHub.");
+      }
+    } catch {
+      setToast("Could not resend email.");
+    }
+    window.setTimeout(() => setToast(null), 3200);
   };
 
   const bookingsHref = isAuthenticated ? "/bookings" : "/bookings/lookup";
@@ -235,7 +301,7 @@ export default function ConfirmationContent() {
         <p className="mt-2 text-sm text-content/70 sm:text-base">
           Your ride has been successfully booked
         </p>
-        <p className="mt-5 inline-block rounded-full bg-secondary/10 px-5 py-2 text-lg font-bold tracking-wide text-secondary sm:text-xl">
+        <p className="mt-5 inline-block rounded-full bg-[#1E3A5F]/10 px-5 py-2 text-lg font-bold tracking-wide text-[#1E3A5F] sm:text-xl">
           {reference}
         </p>
       </div>
@@ -339,19 +405,26 @@ export default function ConfirmationContent() {
         </div>
       </div>
 
-      <div className="mt-6 rounded-xl border border-sky-200 bg-sky-50 px-5 py-5 text-sm shadow-sm">
-        <p className="flex items-center gap-2 font-bold text-secondary">
+      <div className="mt-6 rounded-xl border border-[#1E3A5F]/15 bg-[#1E3A5F]/5 px-5 py-5 text-sm shadow-sm">
+        <p className="flex items-center gap-2 font-bold text-[#1E3A5F]">
           <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden />
-          What Happens Next?
+          What happens next
+        </p>
+        <p className="mt-2 text-content/70">
+          A confirmation email from AirportHub is on its way to{" "}
+          <span className="font-medium text-content">
+            {booking.customer_email}
+          </span>
+          . You can view your booking anytime without signing in.
         </p>
         <ol className="mt-4 space-y-3">
           {[
-            "Confirmation email sent to your inbox within 5 minutes",
-            "Your operator will contact you 30 minutes before pickup",
-            "Track your booking anytime in My Bookings",
+            "Check your inbox — the email is your confirmation",
+            "Your operator may contact you before pickup",
+            "View or manage your booking from the link in the email",
           ].map((text, i) => (
             <li key={text} className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-white">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1E3A5F] text-xs font-bold text-white">
                 {i + 1}
               </span>
               <span className="text-content/80">{text}</span>
@@ -436,20 +509,36 @@ export default function ConfirmationContent() {
         </p>
       ) : null}
 
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
         <button
           type="button"
-          onClick={showReceiptToast}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-content shadow-sm transition hover:bg-slate-50"
+          onClick={() => void downloadReceipt()}
+          disabled={receiptLoading}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-content shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Download className="h-4 w-4" aria-hidden />
-          Download Receipt
+          {receiptLoading ? "Preparing PDF…" : "Download Receipt"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void resendConfirmationEmail()}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-content shadow-sm transition hover:bg-slate-50"
+        >
+          <Mail className="h-4 w-4" aria-hidden />
+          Resend confirmation email
         </button>
         <Link
-          href={bookingsHref}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-secondary px-5 py-2.5 text-sm font-semibold text-secondary-foreground shadow-md transition hover:bg-blue-600"
+          href={
+            isAuthenticated
+              ? bookingsHref
+              : `/bookings/lookup?${new URLSearchParams({
+                  ref: reference,
+                  email: (guestEmail || booking.customer_email).trim(),
+                }).toString()}`
+          }
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1E3A5F] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#16304f]"
         >
-          View My Bookings
+          View Your Booking
         </Link>
       </div>
 
@@ -460,19 +549,19 @@ export default function ConfirmationContent() {
           support team is here to help.
         </p>
         <p className="mt-3 flex items-center gap-2">
-          <Phone className="h-4 w-4 text-secondary" aria-hidden />
-          <a href="tel:08000000000" className="hover:text-secondary">
-            0800 XXX XXXX
-          </a>
-        </p>
-        <p className="mt-1 flex items-center gap-2">
           <Mail className="h-4 w-4 text-secondary" aria-hidden />
           <a
-            href="mailto:support@taxibook.co.uk"
+            href={`mailto:${SITE_EMAILS.support}`}
             className="hover:text-secondary"
           >
-            support@taxibook.co.uk
+            {SITE_EMAILS.support}
           </a>
+        </p>
+        <p className="mt-1 text-content/65">
+          <Link href="/faq" className="font-medium text-secondary hover:underline">
+            Visit our FAQ
+          </Link>{" "}
+          for cancellation and refund information.
         </p>
       </div>
     </ConfirmationShell>
@@ -493,7 +582,7 @@ function ErrorState({ message }: { message: string }) {
       <p className="text-lg font-semibold text-content">Booking not found</p>
       <p className="mt-2 text-sm text-content/65">{message}</p>
       <a
-        href="mailto:support@taxibook.co.uk"
+        href={`mailto:${SITE_EMAILS.support}`}
         className="mt-6 inline-flex items-center justify-center rounded-xl bg-secondary px-5 py-2.5 text-sm font-semibold text-secondary-foreground shadow-md transition hover:bg-blue-600"
       >
         Contact Support

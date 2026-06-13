@@ -107,8 +107,9 @@ If the app is deployed to Cloudflare Workers (for example `*.workers.dev`), **ev
    - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
    - `NEXT_PUBLIC_APP_URL` (your Workers URL, e.g. `https://taxi-booking.example.workers.dev`)
    - **`GEOAPIFY_API_KEY`** (address autocomplete; use a server key without HTTP referrer restrictions)
+   - **`RESEND_API_KEY`**, **`RESEND_FROM_EMAIL`**, **`RESEND_FROM_NAME`** (transactional email from airporthub.co.uk)
 2. Redeploy after changing secrets.
-3. Verify: `GET /api/health` should show `"geoapifyConfigured": true`.
+3. Verify: `GET /api/health` should show `"geoapifyConfigured": true` and `"emailConfigured": true` when Resend is set.
 3. **Symptom:** “Application error: a server-side exception has occurred” on `/admin/dashboard` or after sign-in usually means a required secret (often `SUPABASE_SERVICE_ROLE_KEY`) was missing at runtime.
 
 ## Supabase auto-complete cron
@@ -138,6 +139,26 @@ Abandoned unpaid bookings (`pending` + `unpaid`, older than 7 days) are cancelle
 4. Manual test: `SELECT public.expire_stale_pending_bookings(interval '7 days');` (returns number of rows cancelled).
 
 Schedule: daily at **03:00 UTC**. To change it, update the job in SQL Editor or edit `029_expire_pending_cron.sql` before applying.
+
+## Transactional email (Resend)
+
+Booking confirmations, trip updates, receipts, and resend actions use [Resend](https://resend.com) from the verified **airporthub.co.uk** domain. Every send attempt is written to `email_logs` (success or failure) for admin review on the booking detail page.
+
+1. Create a Resend account and verify **airporthub.co.uk**.
+2. Add to `.env.local` (and production Worker/Vercel secrets):
+   - `RESEND_API_KEY`
+   - `RESEND_FROM_EMAIL=noreply@airporthub.co.uk`
+   - `RESEND_FROM_NAME=AirportHub`
+   - `NEXT_PUBLIC_APP_URL=https://airporthub.co.uk` (or your dev URL)
+3. **Supabase Auth (password reset):** In Supabase → Authentication → URL configuration:
+   - Site URL: `https://airporthub.co.uk` (or `http://localhost:3000` for dev)
+   - Redirect URLs: `https://airporthub.co.uk/auth/reset-password`, `http://localhost:3000/auth/reset-password`
+   - Disable Supabase’s default recovery email if you send reset links via Resend (`/api/auth/send-reset-email`)
+4. Verify: `GET /api/health` → `"emailConfigured": true` and `"emailFrom": "AirportHub <noreply@airporthub.co.uk>"`
+
+**Password reset:** `/forgot-password` → branded Resend email → `/auth/reset-password` → `/login?reset=success`.
+
+**Receipts (PDF):** `GET /api/bookings/{id}/receipt?email=…` (guest) or signed-in customer. Legacy `GET /api/bookings/receipt?ref=…&email=…` also returns PDF. Confirmation emails include a PDF attachment.
 
 ## Configuration notes
 

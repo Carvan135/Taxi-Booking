@@ -20,6 +20,10 @@ import {
 } from "@/lib/booking/customer-booking-ui";
 import { canCustomerReviewBooking } from "@/lib/booking/customer-review";
 import { bookingKeys } from "@/hooks/queries/keys";
+import {
+  fetchCancellationPolicyClient,
+  type ClientCancellationPolicy,
+} from "@/lib/booking/fetch-cancellation-policy-client";
 import { operatorContactFromRow } from "@/lib/booking/operator-contact";
 import { PLACEHOLDER } from "@/lib/format/display";
 import { BOOKING_LEG } from "@/lib/validations/enums";
@@ -84,11 +88,26 @@ export function BookingCard({
   const [copied, setCopied] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [cancelPolicy, setCancelPolicy] =
+    useState<ClientCancellationPolicy | null>(null);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [localReview, setLocalReview] = useState(booking.review);
 
   function refreshBookings() {
     void queryClient.invalidateQueries({ queryKey: bookingKeys.customer });
+  }
+
+  async function openCancelModal() {
+    setCancelConfirmOpen(true);
+    setPolicyLoading(true);
+    setCancelPolicy(null);
+    try {
+      const policy = await fetchCancellationPolicyClient(booking.id);
+      setCancelPolicy(policy);
+    } finally {
+      setPolicyLoading(false);
+    }
   }
 
   async function copyReference() {
@@ -318,7 +337,7 @@ export function BookingCard({
                 className="flex-1 border-slate-300 font-semibold text-content"
                 loading={cancellingId === booking.id}
                 disabled={cancellingId !== null && cancellingId !== booking.id}
-                onClick={() => setCancelConfirmOpen(true)}
+                onClick={() => void openCancelModal()}
               >
                 Cancel booking
               </Button>
@@ -358,8 +377,13 @@ export function BookingCard({
         open={cancelConfirmOpen}
         onClose={() => setCancelConfirmOpen(false)}
         loading={cancellingId === booking.id}
+        policyLoading={policyLoading}
+        policySummary={cancelPolicy?.summary ?? null}
+        policyDetail={cancelPolicy?.detail ?? null}
+        policyBlocked={cancelPolicy != null && !cancelPolicy.allowed}
         bookingReference={booking.reference}
         onConfirm={() => {
+          if (cancelPolicy && !cancelPolicy.allowed) return;
           void Promise.resolve(onCancel?.(booking.id)).finally(() => {
             setCancelConfirmOpen(false);
           });

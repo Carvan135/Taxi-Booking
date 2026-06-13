@@ -33,6 +33,9 @@ function isPublicPath(pathname: string): boolean {
     "/faq",
     "/privacy",
     "/terms",
+    "/reset-password",
+    "/auth/reset-password",
+    "/auth/callback",
   ];
   for (const root of publicRoots) {
     if (pathname === root || pathname.startsWith(`${root}/`)) return true;
@@ -41,7 +44,11 @@ function isPublicPath(pathname: string): boolean {
 }
 
 function isAuthPage(pathname: string): boolean {
-  return pathname.startsWith("/login") || pathname.startsWith("/signup");
+  return (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/forgot-password")
+  );
 }
 
 function requiredRoleForPath(pathname: string): UserRole | null {

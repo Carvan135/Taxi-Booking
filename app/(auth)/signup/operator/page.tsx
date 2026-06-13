@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { SITE_NAME } from "@/lib/site/contact";
 import { ArrowLeft, Car, Info, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -61,7 +62,7 @@ function OperatorSignupBanner() {
           Become an Operator
         </h1>
         <p className="mt-3 max-w-xl text-base leading-relaxed text-gray-300 sm:text-lg">
-          Join TaxiBook and get access to customers, fast payouts, and flexible
+          Join {SITE_NAME} and get access to customers, fast payouts, and flexible
           work.
         </p>
         <p className="mt-2 text-sm font-medium text-sky-400">
@@ -237,7 +238,7 @@ export default function OperatorSignupPage() {
           href="/"
           className="mb-10 text-2xl font-bold tracking-tight text-primary"
         >
-          TaxiBook
+          {SITE_NAME}
         </Link>
 
         <div className="w-full min-w-0 max-w-3xl">

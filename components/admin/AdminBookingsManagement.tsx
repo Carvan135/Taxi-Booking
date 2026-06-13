@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminBookingStatusBadge } from "@/components/admin/AdminBookingStatusBadge";
+import { AdminPaymentStatusBadge } from "@/components/admin/AdminPaymentStatusBadge";
 import { AdminBookingsFilters } from "@/components/admin/AdminBookingsFilters";
 import { AdminBookingsPagination } from "@/components/admin/AdminBookingsPagination";
 import type { AdminBookingsListParams } from "@/lib/booking/admin-bookings-query";
@@ -144,7 +145,7 @@ export function AdminBookingsManagement({
           </p>
         </header>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <SummaryCard
             label="Total Bookings"
             value={String(summary.totalBookings)}
@@ -165,6 +166,16 @@ export function AdminBookingsManagement({
             label="Open Disputes"
             value={String(summary.disputedCount)}
             variant="danger"
+          />
+          <SummaryCard
+            label="Refunds Issued"
+            value={String(summary.refundsIssued)}
+            variant="refund"
+          />
+          <SummaryCard
+            label="Total Refunded"
+            value={formatMoney(summary.totalRefunded)}
+            variant="refund"
           />
         </div>
 
@@ -258,23 +269,37 @@ function SummaryCard({
 }: {
   label: string;
   value: string;
-  variant?: "default" | "danger";
+  variant?: "default" | "danger" | "refund";
 }) {
   return (
     <div
       className={`rounded-2xl border p-5 shadow-sm ${
         variant === "danger"
           ? "border-red-200/80 bg-red-50"
-          : "border-slate-200/80 bg-white"
+          : variant === "refund"
+            ? "border-violet-200/80 bg-violet-50"
+            : "border-slate-200/80 bg-white"
       }`}
     >
       <p
-        className={`text-sm font-medium ${variant === "danger" ? "text-red-800" : "text-[#6B7280]"}`}
+        className={`text-sm font-medium ${
+          variant === "danger"
+            ? "text-red-800"
+            : variant === "refund"
+              ? "text-violet-800"
+              : "text-[#6B7280]"
+        }`}
       >
         {label}
       </p>
       <p
-        className={`mt-2 text-2xl font-bold tracking-tight ${variant === "danger" ? "text-red-900" : "text-[#111827]"}`}
+        className={`mt-2 text-2xl font-bold tracking-tight ${
+          variant === "danger"
+            ? "text-red-900"
+            : variant === "refund"
+              ? "text-violet-900"
+              : "text-[#111827]"
+        }`}
       >
         {value}
       </p>
@@ -302,10 +327,22 @@ function BookingCard({
           <p className="font-semibold text-[#111827]">#{booking.reference}</p>
           <p className="mt-1 text-sm text-[#374151]">{customerName(booking)}</p>
         </div>
-        <AdminBookingStatusBadge status={booking.status} />
+        <div className="flex flex-wrap gap-1.5">
+          <AdminBookingStatusBadge status={booking.status} />
+          <AdminPaymentStatusBadge status={booking.payment_status} />
+        </div>
       </div>
 
       <dl className="mt-4 space-y-2 text-sm">
+        {booking.refund_amount != null ? (
+          <div className="flex justify-between gap-4">
+            <dt className="shrink-0 text-[#6B7280]">Refunded</dt>
+            <dd className="font-semibold tabular-nums text-violet-800">
+              {formatMoney(booking.refund_amount)}
+              {booking.refund_type ? ` (${booking.refund_type})` : ""}
+            </dd>
+          </div>
+        ) : null}
         <div className="flex justify-between gap-4">
           <dt className="shrink-0 text-[#6B7280]">Operator</dt>
           <dd className="text-right font-medium text-[#374151]">
@@ -387,7 +424,15 @@ function BookingTableRow({
         {formatMoney(booking.platform_commission)}
       </td>
       <td className="px-4 py-5">
-        <AdminBookingStatusBadge status={booking.status} />
+        <div className="flex flex-col gap-1">
+          <AdminBookingStatusBadge status={booking.status} />
+          <AdminPaymentStatusBadge status={booking.payment_status} />
+          {booking.refund_amount != null ? (
+            <span className="text-xs font-medium text-violet-800">
+              Refunded {formatMoney(booking.refund_amount)}
+            </span>
+          ) : null}
+        </div>
       </td>
       <td className="px-4 py-5 text-right">
         <BookingActions

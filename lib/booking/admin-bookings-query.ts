@@ -3,7 +3,11 @@ import { BOOKING_STATUS } from "@/lib/validations/enums";
 
 export const ADMIN_BOOKINGS_PAGE_SIZE = 20;
 
-export type AdminBookingsStatusFilter = BookingStatus | "all" | "disputed";
+export type AdminBookingsStatusFilter =
+  | BookingStatus
+  | "all"
+  | "disputed"
+  | "refunded";
 
 export type AdminBookingsListParams = {
   search: string;
@@ -29,6 +33,7 @@ export function parseAdminBookingsSearchParams(
   const validStatuses: AdminBookingsStatusFilter[] = [
     "all",
     "disputed",
+    "refunded",
     BOOKING_STATUS.pending,
     BOOKING_STATUS.confirmed,
     BOOKING_STATUS.completed,

@@ -20,7 +20,12 @@ import {
   canCustomerCancelBooking,
   showCustomerJourneyGreeting,
 } from "@/lib/booking/customer-booking-ui";
+import {
+  fetchCancellationPolicyClient,
+  type ClientCancellationPolicy,
+} from "@/lib/booking/fetch-cancellation-policy-client";
 import { PLACEHOLDER } from "@/lib/format/display";
+import { SITE_EMAILS } from "@/lib/site/contact";
 import {
   COMPLETED_BOOKING_STATUSES,
   UPCOMING_BOOKING_STATUSES,
@@ -82,7 +87,8 @@ function BookingCard({
   cancellingId: string | null;
 }) {
   const ref = `#${booking.reference}`;
-  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL;
+  const supportEmail =
+    process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim() || SITE_EMAILS.bookings;
 
   const contactMailto =
     supportEmail != null && supportEmail.length > 0
@@ -97,6 +103,21 @@ function BookingCard({
   const canCancel = canCustomerCancelBooking(booking);
   const showJourneyGreeting = showCustomerJourneyGreeting(booking);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [cancelPolicy, setCancelPolicy] =
+    useState<ClientCancellationPolicy | null>(null);
+
+  async function openCancelModal() {
+    setCancelConfirmOpen(true);
+    setPolicyLoading(true);
+    setCancelPolicy(null);
+    try {
+      const policy = await fetchCancellationPolicyClient(booking.id);
+      setCancelPolicy(policy);
+    } finally {
+      setPolicyLoading(false);
+    }
+  }
 
   return (
     <article className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm sm:p-6">
@@ -111,6 +132,10 @@ function BookingCard({
           ) : booking.status === "cancelled" ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">
               Cancelled
+            </span>
+          ) : booking.payment_status === "refunded" ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-800 ring-1 ring-inset ring-violet-200">
+              Refunded
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">
@@ -180,7 +205,7 @@ function BookingCard({
                 className="flex-1 border-slate-300 font-semibold text-content"
                 loading={cancellingId === booking.id}
                 disabled={cancellingId !== null}
-                onClick={() => setCancelConfirmOpen(true)}
+                onClick={() => void openCancelModal()}
               >
                 Cancel booking
               </Button>
@@ -213,8 +238,13 @@ function BookingCard({
         open={cancelConfirmOpen}
         onClose={() => setCancelConfirmOpen(false)}
         loading={cancellingId === booking.id}
+        policyLoading={policyLoading}
+        policySummary={cancelPolicy?.summary ?? null}
+        policyDetail={cancelPolicy?.detail ?? null}
+        policyBlocked={cancelPolicy != null && !cancelPolicy.allowed}
         bookingReference={booking.reference}
         onConfirm={() => {
+          if (cancelPolicy && !cancelPolicy.allowed) return;
           void Promise.resolve(onCancel(booking.id)).finally(() => {
             setCancelConfirmOpen(false);
           });

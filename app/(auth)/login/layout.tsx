@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SITE_NAME } from "@/lib/site/contact";
 
 export default function LoginSectionLayout({
   children,
@@ -11,7 +12,7 @@ export default function LoginSectionLayout({
         href="/"
         className="mb-10 text-2xl font-bold tracking-tight text-primary"
       >
-        TaxiBook
+        {SITE_NAME}
       </Link>
       {children}
     </div>

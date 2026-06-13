@@ -11,9 +11,11 @@ import {
   useUpdatePlatformSetting,
 } from "@/hooks/queries/usePlatformSettings";
 import {
+  cancellationSettingsSchema,
   commissionSettingsSchema,
   completionSettingsSchema,
   payoutSettingsSchema,
+  type CancellationSettingsFormInput,
   type CommissionSettingsFormInput,
   type CompletionSettingsFormInput,
   type PayoutSettingsFormInput,
@@ -26,6 +28,9 @@ const KEYS = {
   payoutEarly: "payout_early_release_enabled",
   autoCompleteHours: "auto_complete_hours",
   autoCompleteWarningHours: "auto_complete_warning_hours",
+  cancellationCutoff: "cancellation_cutoff_hours",
+  cancellationFullRefund: "cancellation_full_refund_hours",
+  partialRefund: "partial_refund_enabled",
 } as const;
 
 const DEFAULTS = {
@@ -34,6 +39,9 @@ const DEFAULTS = {
   payoutEarly: true,
   autoCompleteHours: 24,
   autoCompleteWarningHours: 2,
+  cancellationCutoff: 24,
+  cancellationFullRefund: 24,
+  partialRefund: true,
 } as const;
 
 function settingsByKey(rows: PlatformSetting[]): Record<string, string> {
@@ -71,6 +79,13 @@ function parseAutoCompleteWarningHours(value: string | undefined): number {
     : DEFAULTS.autoCompleteWarningHours;
 }
 
+function parseCancellationHours(value: string | undefined, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 1 && n <= 168
+    ? Math.round(n)
+    : fallback;
+}
+
 function commissionPreviewText(percent: number): string {
   const platform = (100 * percent) / 100;
   const operator = 100 - platform;
@@ -84,6 +99,7 @@ export function AdminSettingsPage() {
   const [commissionSaving, setCommissionSaving] = useState(false);
   const [payoutSaving, setPayoutSaving] = useState(false);
   const [completionSaving, setCompletionSaving] = useState(false);
+  const [cancellationSaving, setCancellationSaving] = useState(false);
 
   const map = useMemo(() => settingsByKey(rows), [rows]);
   const savedCommission = parseCommission(map[KEYS.commission]);
@@ -111,6 +127,15 @@ export function AdminSettingsPage() {
     },
   });
 
+  const cancellationForm = useForm<CancellationSettingsFormInput>({
+    resolver: zodResolver(cancellationSettingsSchema),
+    defaultValues: {
+      cancellation_cutoff_hours: DEFAULTS.cancellationCutoff,
+      cancellation_full_refund_hours: DEFAULTS.cancellationFullRefund,
+      partial_refund_enabled: DEFAULTS.partialRefund,
+    },
+  });
+
   useEffect(() => {
     if (rows.length === 0) return;
     commissionForm.reset({
@@ -125,6 +150,20 @@ export function AdminSettingsPage() {
       auto_complete_warning_hours: parseAutoCompleteWarningHours(
         map[KEYS.autoCompleteWarningHours],
       ),
+    });
+    cancellationForm.reset({
+      cancellation_cutoff_hours: parseCancellationHours(
+        map[KEYS.cancellationCutoff],
+        DEFAULTS.cancellationCutoff,
+      ),
+      cancellation_full_refund_hours: parseCancellationHours(
+        map[KEYS.cancellationFullRefund],
+        DEFAULTS.cancellationFullRefund,
+      ),
+      partial_refund_enabled:
+        map[KEYS.partialRefund] === undefined
+          ? DEFAULTS.partialRefund
+          : map[KEYS.partialRefund] === "true",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when DB values load
   }, [rows.length, savedCommission, savedPayoutDelay, savedPayoutEarly]);
@@ -185,6 +224,34 @@ export function AdminSettingsPage() {
     }
   });
 
+  const onSaveCancellation = cancellationForm.handleSubmit(async (values) => {
+    setCancellationSaving(true);
+    try {
+      await updateSetting.mutateAsync({
+        key: KEYS.cancellationCutoff,
+        value: String(values.cancellation_cutoff_hours),
+      });
+      await updateSetting.mutateAsync({
+        key: KEYS.cancellationFullRefund,
+        value: String(values.cancellation_full_refund_hours),
+      });
+      await updateSetting.mutateAsync({
+        key: KEYS.partialRefund,
+        value: values.partial_refund_enabled ? "true" : "false",
+      });
+      showSuccess("Cancellation policy saved.");
+    } catch (e) {
+      cancellationForm.setError("root", {
+        message:
+          e instanceof Error
+            ? e.message
+            : "Could not save cancellation settings.",
+      });
+    } finally {
+      setCancellationSaving(false);
+    }
+  });
+
   const onSavePayout = payoutForm.handleSubmit(async (values) => {
     setPayoutSaving(true);
     try {
@@ -228,7 +295,7 @@ export function AdminSettingsPage() {
               Platform Settings
             </h1>
             <p className="mt-1 text-sm text-[#6B7280]">
-              Configure commission and payout rules for the marketplace
+              Commission, payouts, completion, and cancellation policy
             </p>
           </div>
         </header>
@@ -452,9 +519,96 @@ export function AdminSettingsPage() {
               </form>
             </section>
 
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-[#111827]">
+                Cancellation & refunds
+              </h2>
+              <p className="mt-1 text-sm text-[#6B7280]">
+                Shown to customers when they cancel and used by admins when
+                resolving disputes
+              </p>
+
+              <form
+                onSubmit={onSaveCancellation}
+                className="mt-5 space-y-4"
+                noValidate
+              >
+                <div>
+                  <label
+                    htmlFor="cancellation_cutoff_hours"
+                    className="text-sm font-medium text-[#111827]"
+                  >
+                    Cancellation cutoff (hours before pickup)
+                  </label>
+                  <p className="mt-0.5 text-xs text-[#6B7280]">
+                    Customers cannot cancel online inside this window
+                  </p>
+                  <input
+                    id="cancellation_cutoff_hours"
+                    type="number"
+                    min={1}
+                    max={168}
+                    className={`${BOOK_TRIP_INPUT_CLASS} max-w-[160px] mt-1.5`}
+                    {...cancellationForm.register("cancellation_cutoff_hours", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="cancellation_full_refund_hours"
+                    className="text-sm font-medium text-[#111827]"
+                  >
+                    Full refund window (hours before pickup)
+                  </label>
+                  <p className="mt-0.5 text-xs text-[#6B7280]">
+                    Pickups further out than this qualify for a full refund
+                    message
+                  </p>
+                  <input
+                    id="cancellation_full_refund_hours"
+                    type="number"
+                    min={1}
+                    max={168}
+                    className={`${BOOK_TRIP_INPUT_CLASS} max-w-[160px] mt-1.5`}
+                    {...cancellationForm.register(
+                      "cancellation_full_refund_hours",
+                      { valueAsNumber: true },
+                    )}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#111827]">
+                      Partial refunds on disputes
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#6B7280]">
+                      Admins can record partial refunds when resolving disputes
+                    </p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      className="peer sr-only"
+                      {...cancellationForm.register("partial_refund_enabled")}
+                    />
+                    <span className="h-7 w-12 rounded-full bg-slate-300 transition peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-secondary peer-focus-visible:ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-6 after:w-6 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-5" />
+                  </label>
+                </div>
+                {cancellationForm.formState.errors.root?.message ? (
+                  <p className="text-sm text-red-600" role="alert">
+                    {cancellationForm.formState.errors.root.message}
+                  </p>
+                ) : null}
+                <Button type="submit" loading={cancellationSaving}>
+                  Save cancellation policy
+                </Button>
+              </form>
+            </section>
+
             <p className="rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-              Changes take effect on new bookings only. Existing bookings use
-              the settings at time of creation.
+              Policy changes apply immediately to new cancellation checks.
+              Commission and payout rules apply to new bookings.
             </p>
           </div>
         ) : null}

@@ -4,6 +4,10 @@ import {
   syncBookingsFromPaymentIntent,
   syncBookingsPaymentFailed,
 } from "@/lib/stripe/sync-booking-payment";
+import {
+  fireBookingEmail,
+  emitBookingConfirmationSafetyNet,
+} from "@/lib/email/booking-events";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -82,6 +86,10 @@ export async function POST(req: Request) {
           console.error(
             "payment_intent.succeeded booking sync error:",
             sync.error,
+          );
+        } else {
+          fireBookingEmail(() =>
+            emitBookingConfirmationSafetyNet(supabase, intent.id),
           );
         }
         break;

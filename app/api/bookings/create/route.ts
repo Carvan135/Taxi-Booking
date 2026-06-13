@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createBookingBodySchema } from "@/lib/booking/api-schemas";
 import { finalizePaidBooking } from "@/lib/booking/finalize-paid-booking";
+import { fireBookingEmail, emitBookingCreatedEmails } from "@/lib/email/booking-events";
 import { pollPaymentIntentUntilSettled } from "@/lib/booking/poll-payment-intent";
 import { getStripeServer } from "@/lib/stripe/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
@@ -65,6 +66,12 @@ export async function POST(req: Request) {
           details: result.details,
         },
         { status: result.status },
+      );
+    }
+
+    if (paymentIntent.status === "succeeded" && result.payload.booking_reference) {
+      fireBookingEmail(() =>
+        emitBookingCreatedEmails(supabase, result.payload.booking_reference),
       );
     }
 

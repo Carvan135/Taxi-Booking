@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { Car, LogOut, Menu, Shield, X } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { SITE_NAME } from "@/lib/site/contact";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { FormSubmitSpinner } from "@/components/ui/FormSubmitSpinner";
 import { signOut } from "@/lib/auth/actions";
@@ -16,7 +17,8 @@ type DashboardShellProps = {
 };
 
 export function DashboardShell({ variant, children }: DashboardShellProps) {
-  const title = variant === "operator" ? "TaxiBook Operator" : "TaxiBook Admin";
+  const title =
+    variant === "operator" ? `${SITE_NAME} Operator` : `${SITE_NAME} Admin`;
   const TitleIcon = variant === "operator" ? Car : Shield;
   const [mobileOpen, setMobileOpen] = useState(false);
 

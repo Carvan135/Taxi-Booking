@@ -5,6 +5,10 @@ import {
 } from "@/lib/booking/platform-settings-server";
 import { getNotificationContent } from "@/lib/notifications/messages";
 import { sendNotification } from "@/lib/notifications/send";
+import {
+  fireBookingEmail,
+  emitBookingReceiptEmail,
+} from "@/lib/email/booking-events";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   BOOKING_STATUS,
@@ -31,7 +35,7 @@ export async function POST(_req: Request, context: RouteContext) {
     const { data: booking, error: readError } = await supabase
       .from("bookings")
       .select(
-        "id, reference, status, customer_id, operator_id, completion_status",
+        "id, reference, status, customer_id, customer_email, operator_id, completion_status, payment_status",
       )
       .eq("id", bookingId)
       .maybeSingle();
@@ -92,6 +96,10 @@ export async function POST(_req: Request, context: RouteContext) {
           booking_id: bookingId,
         });
       }
+    }
+
+    if (booking.payment_status === "paid") {
+      fireBookingEmail(() => emitBookingReceiptEmail(admin, bookingId));
     }
 
     return NextResponse.json({ success: true });

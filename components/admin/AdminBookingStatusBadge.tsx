@@ -15,15 +15,16 @@ const STATUS_STYLES: Record<BookingStatus, string> = {
 };
 
 type AdminBookingStatusBadgeProps = {
-  status: BookingStatus;
+  status: BookingStatus | string;
 };
 
 export function AdminBookingStatusBadge({ status }: AdminBookingStatusBadgeProps) {
+  const key = (status in STATUS_STYLES ? status : BOOKING_STATUS.pending) as BookingStatus;
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${STATUS_STYLES[status]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${STATUS_STYLES[key]}`}
     >
-      {STATUS_LABELS[status]}
+      {STATUS_LABELS[key]}
     </span>
   );
 }

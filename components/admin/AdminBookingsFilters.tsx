@@ -13,6 +13,7 @@ import { BOOKING_STATUS } from "@/lib/validations/enums";
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
   { value: "disputed", label: "Disputed" },
+  { value: "refunded", label: "Refunded" },
   { value: BOOKING_STATUS.pending, label: "Pending" },
   { value: BOOKING_STATUS.confirmed, label: "Confirmed" },
   { value: BOOKING_STATUS.completed, label: "Completed" },

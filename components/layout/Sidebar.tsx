@@ -31,6 +31,7 @@ const adminItems: NavItem[] = [
   { href: "/admin/bookings", label: "Bookings", icon: Calendar },
   { href: "/admin/operators", label: "Operators", icon: Users },
   { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/profile", label: "Profile", icon: User },
 ];
 
 type SidebarProps = {

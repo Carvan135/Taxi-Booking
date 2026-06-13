@@ -21,10 +21,13 @@ export function useCancelMyBooking() {
 
   return useMutation({
     mutationFn: async (bookingId: string) => {
-      const { error } = await supabase.rpc("customer_cancel_booking", {
-        p_booking_id: bookingId,
+      const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+        method: "POST",
       });
-      if (error) throw error;
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        throw new Error(body.error ?? "Could not cancel booking");
+      }
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bookingKeys.customer });

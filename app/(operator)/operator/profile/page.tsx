@@ -1,4 +1,5 @@
 import { User } from "lucide-react";
+import { ChangePasswordForm } from "@/components/auth/ChangePasswordForm";
 import { OperatorProfileForm } from "@/components/operator/OperatorProfileForm";
 import { createClient } from "@/lib/supabase/server";
 import type { OperatorStatus } from "@/types";
@@ -137,6 +138,10 @@ export default async function OperatorProfilePage() {
             : undefined
         }
       />
+
+      <div className="mt-8 max-w-3xl">
+        <ChangePasswordForm />
+      </div>
     </div>
   );
 }

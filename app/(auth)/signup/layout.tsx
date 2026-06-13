@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SITE_NAME } from "@/lib/site/contact";
 
 export default function SignupSectionLayout({
   children,
@@ -21,7 +22,7 @@ export default function SignupSectionLayout({
         href="/"
         className="mb-10 text-2xl font-bold tracking-tight text-primary"
       >
-        TaxiBook
+        {SITE_NAME}
       </Link>
       {children}
     </div>

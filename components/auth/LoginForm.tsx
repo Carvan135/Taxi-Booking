@@ -30,6 +30,7 @@ export function LoginForm({ variant = "rider", allowedRoles }: LoginFormProps) {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered") === "true";
+  const passwordReset = searchParams.get("reset") === "success";
   const redirectParam = safeInternalRedirectPath(
     searchParams.get("redirect"),
   );
@@ -91,7 +92,7 @@ export function LoginForm({ variant = "rider", allowedRoles }: LoginFormProps) {
   const heading =
     variant === "operator"
       ? { title: "Operator sign in", subtitle: "Access your operator dashboard" }
-      : { title: "Welcome back", subtitle: "Sign in to your TaxiBook account" };
+      : { title: "Welcome back", subtitle: "Sign in to your AirportHub account" };
 
   return (
     <div className={cardClass}>
@@ -108,6 +109,15 @@ export function LoginForm({ variant = "rider", allowedRoles }: LoginFormProps) {
           >
             Registration successful. Sign in below — guest bookings with this
             email will link to your account automatically.
+          </div>
+        ) : null}
+
+        {passwordReset ? (
+          <div
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm text-emerald-900"
+            role="status"
+          >
+            Password updated. Sign in with your new password.
           </div>
         ) : null}
 
@@ -144,9 +154,8 @@ export function LoginForm({ variant = "rider", allowedRoles }: LoginFormProps) {
 
           <div className="flex justify-end">
             <Link
-              href="#"
+              href="/forgot-password"
               className="text-sm font-medium text-secondary hover:underline"
-              onClick={(e) => e.preventDefault()}
             >
               Forgot password?
             </Link>

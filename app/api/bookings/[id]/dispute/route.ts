@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  sendCustomerTripEmail,
+  sendOperatorTripEmail,
+} from "@/lib/email/dispatch";
 import { getNotificationContent } from "@/lib/notifications/messages";
 import {
   fetchAdminUserIds,
@@ -45,7 +49,9 @@ export async function POST(req: Request, context: RouteContext) {
 
     const { data: booking, error: readError } = await supabase
       .from("bookings")
-      .select("id, reference, customer_id, completion_status")
+      .select(
+        "id, reference, customer_id, customer_email, customer_name, operator_id, completion_status",
+      )
       .eq("id", bookingId)
       .maybeSingle();
 
@@ -100,6 +106,24 @@ export async function POST(req: Request, context: RouteContext) {
       booking_id: bookingId,
       metadata: { reference: booking.reference, reason: parsed.data.reason },
     });
+
+    await sendCustomerTripEmail(admin, {
+      bookingId,
+      reference: booking.reference,
+      customerEmail: booking.customer_email,
+      customerId: booking.customer_id,
+      customerName: booking.customer_name,
+      type: "dispute_raised",
+    });
+
+    if (booking.operator_id) {
+      await sendOperatorTripEmail(admin, {
+        operatorId: booking.operator_id,
+        bookingId,
+        type: "dispute_raised",
+        reference: booking.reference,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

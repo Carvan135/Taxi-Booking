@@ -226,6 +226,17 @@ export const platformSettingsSchema = z.object({
     .int()
     .min(1, "Must be at least 1 hour")
     .max(72, "Cannot exceed 72 hours"),
+  cancellation_cutoff_hours: z.coerce
+    .number()
+    .int()
+    .min(1, "Must be at least 1 hour")
+    .max(168, "Cannot exceed 168 hours"),
+  cancellation_full_refund_hours: z.coerce
+    .number()
+    .int()
+    .min(1, "Must be at least 1 hour")
+    .max(168, "Cannot exceed 168 hours"),
+  partial_refund_enabled: z.boolean(),
 });
 
 export type OneWayBookingFormData = z.infer<typeof oneWayBookingSchema>;
@@ -261,6 +272,12 @@ export const completionSettingsSchema = platformSettingsSchema.pick({
   auto_complete_warning_hours: true,
 });
 
+export const cancellationSettingsSchema = platformSettingsSchema.pick({
+  cancellation_cutoff_hours: true,
+  cancellation_full_refund_hours: true,
+  partial_refund_enabled: true,
+});
+
 export type CompletionSettingsFormData = z.infer<typeof completionSettingsSchema>;
 export type CompletionSettingsFormInput = z.input<typeof completionSettingsSchema>;
 
@@ -268,3 +285,9 @@ export type CommissionSettingsFormData = z.infer<typeof commissionSettingsSchema
 export type CommissionSettingsFormInput = z.input<typeof commissionSettingsSchema>;
 export type PayoutSettingsFormData = z.infer<typeof payoutSettingsSchema>;
 export type PayoutSettingsFormInput = z.input<typeof payoutSettingsSchema>;
+export type CancellationSettingsFormData = z.infer<
+  typeof cancellationSettingsSchema
+>;
+export type CancellationSettingsFormInput = z.input<
+  typeof cancellationSettingsSchema
+>;

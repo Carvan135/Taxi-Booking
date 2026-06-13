@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { BookingJourneyForm } from "@/components/booking/BookingJourneyForm";
+import { CONTACT_CHANNELS, SITE_NAME } from "@/lib/site/contact";
 
 const features = [
   {
@@ -59,7 +60,7 @@ const faqs = [
   },
   {
     q: "Are operators verified?",
-    a: "Every operator completes onboarding and document checks before appearing on TaxiBook.",
+    a: `Every operator completes onboarding and document checks before appearing on ${SITE_NAME}.`,
   },
 ] as const;
 
@@ -118,7 +119,7 @@ export function FeaturesSection() {
           id="why-heading"
           className="text-center text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl"
         >
-          Why Choose TaxiBook?
+          Why Choose {SITE_NAME}?
         </h2>
         <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
           {features.map(({ title, description, Icon }) => (
@@ -225,12 +226,23 @@ export function ContactSection() {
           Questions about bookings or becoming an operator? We&apos;re here to
           help.
         </p>
-        <a
-          href="mailto:support@taxibook.com"
-          className="mt-6 inline-flex rounded-full border border-secondary bg-white px-6 py-3 text-sm font-semibold text-secondary shadow-sm transition hover:bg-secondary hover:text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
-        >
-          support@taxibook.com
-        </a>
+        <ul className="mx-auto mt-8 grid max-w-lg gap-3 text-left sm:grid-cols-2">
+          {CONTACT_CHANNELS.map(({ label, email }) => (
+            <li key={email}>
+              <a
+                href={`mailto:${email}`}
+                className="block rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition hover:border-secondary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+              >
+                <span className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {label}
+                </span>
+                <span className="mt-1 block text-sm font-semibold text-secondary">
+                  {email}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BookingsTabsList } from "@/components/booking/BookingsTabsList";
 import { BOOK_TRIP_INPUT_CLASS } from "@/components/booking/booking-form-styles";
@@ -15,6 +16,7 @@ import type { CustomerBookingRow } from "@/types";
 type LookupApiResponse = Parameters<typeof mapLookupResponseToBookings>[0];
 
 export default function BookingsLookupPage() {
+  const searchParams = useSearchParams();
   const [reference, setReference] = useState("");
   const [email, setEmail] = useState("");
   const [bookings, setBookings] = useState<CustomerBookingRow[] | null>(null);
@@ -22,12 +24,15 @@ export default function BookingsLookupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const refFromUrl = searchParams.get("ref")?.trim();
+    const emailFromUrl = searchParams.get("email")?.trim();
+    if (refFromUrl) setReference(refFromUrl);
+    if (emailFromUrl) setEmail(emailFromUrl);
+
     const guest = loadTaxibookGuestSession();
-    if (guest?.email) setEmail(guest.email);
-    if (guest?.bookingId && !reference) {
-      /* reference filled by user; email pre-filled only */
-    }
-  }, [reference]);
+    if (!emailFromUrl && guest?.email) setEmail(guest.email);
+    if (!refFromUrl && guest?.reference) setReference(guest.reference);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,10 +85,11 @@ export default function BookingsLookupPage() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
         <div className="mx-auto max-w-md text-center">
           <h1 className="text-2xl font-bold text-content sm:text-3xl">
-            Find your booking
+            View your booking
           </h1>
           <p className="mt-2 text-sm text-content/70">
-            Enter your booking reference and email from your confirmation.
+            Enter the reference and email from your AirportHub confirmation — no
+            account required.
           </p>
         </div>
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOperatorForUser } from "@/lib/auth/operator-api";
+import { sendCustomerTripEmail } from "@/lib/email/dispatch";
 import { getNotificationContent } from "@/lib/notifications/messages";
 import { sendNotification } from "@/lib/notifications/send";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
@@ -36,7 +37,7 @@ export async function POST(_req: Request, context: RouteContext) {
     const { data: booking, error: readError } = await supabase
       .from("bookings")
       .select(
-        "id, reference, status, operator_id, customer_id, customer_email, payment_status, completion_status, journey_started_at",
+        "id, reference, status, operator_id, customer_id, customer_email, customer_name, payment_status, completion_status, journey_started_at",
       )
       .eq("id", bookingId)
       .maybeSingle();
@@ -113,6 +114,15 @@ export async function POST(_req: Request, context: RouteContext) {
         metadata: { reference: booking.reference },
       });
     }
+
+    await sendCustomerTripEmail(admin, {
+      bookingId,
+      reference: booking.reference,
+      customerEmail: booking.customer_email,
+      customerId: booking.customer_id,
+      customerName: booking.customer_name,
+      type: "journey_started",
+    });
 
     return NextResponse.json({ success: true, journey_started_at: now });
   } catch (err) {

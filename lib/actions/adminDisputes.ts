@@ -5,8 +5,17 @@ import {
   addHours,
   getPayoutDelayHours,
 } from "@/lib/booking/platform-settings-server";
+import {
+  fireBookingEmail,
+  emitRefundConfirmationEmail,
+} from "@/lib/email/booking-events";
+import {
+  sendCustomerTripEmail,
+  sendOperatorTripEmail,
+} from "@/lib/email/dispatch";
 import { getNotificationContent } from "@/lib/notifications/messages";
 import { sendNotification } from "@/lib/notifications/send";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/helpers";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -15,15 +24,24 @@ import {
   PAYMENT_STATUSES,
 } from "@/lib/validations/enums";
 
+export type ResolveDisputeCustomerWinsInput = {
+  refundType?: "full" | "partial";
+  refundAmount?: number;
+  cancellationReason?: string;
+};
+
 export async function resolveDisputeCustomerWins(
   bookingId: string,
+  input?: ResolveDisputeCustomerWinsInput,
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = createClient();
-  await requireRole(supabase, ["admin"]);
+  const { user } = await requireRole(supabase, ["admin"]);
 
   const { data: booking, error: readErr } = await supabase
     .from("bookings")
-    .select("id, reference, customer_id, operator_id, completion_status")
+    .select(
+      "id, reference, customer_id, customer_email, customer_name, operator_id, completion_status, price, dispute_reason",
+    )
     .eq("id", bookingId)
     .maybeSingle();
 
@@ -35,6 +53,20 @@ export async function resolveDisputeCustomerWins(
     return { success: false, error: "Booking is not in dispute." };
   }
 
+  const price = Number(booking.price ?? 0);
+  const refundType = input?.refundType ?? "full";
+  const refundAmount =
+    refundType === "partial"
+      ? Math.min(
+          price,
+          Math.max(0, Number(input?.refundAmount ?? 0)),
+        )
+      : price;
+  const cancellationReason =
+    input?.cancellationReason?.trim() ||
+    booking.dispute_reason?.trim() ||
+    "Dispute resolved in customer favour";
+
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("bookings")
@@ -42,6 +74,13 @@ export async function resolveDisputeCustomerWins(
       status: BOOKING_STATUS.cancelled,
       payment_status: PAYMENT_STATUSES[2],
       stripe_payment_status: PAYMENT_STATUSES[2],
+      refund_type: refundType,
+      refund_amount: refundAmount > 0 ? refundAmount : null,
+      refunded_at: refundAmount > 0 ? now : null,
+      refunded_by: refundAmount > 0 ? user.id : null,
+      cancellation_reason: cancellationReason,
+      cancelled_at: now,
+      cancelled_by: user.id,
       dispute_raised_at: null,
       dispute_reason: null,
       auto_complete_at: null,
@@ -64,6 +103,37 @@ export async function resolveDisputeCustomerWins(
     });
   }
 
+  const adminClient = createServiceRoleClient();
+  if (refundAmount > 0 && booking.customer_email) {
+    fireBookingEmail(() =>
+      emitRefundConfirmationEmail(adminClient, {
+        bookingId,
+        reference: booking.reference,
+        amount: refundAmount,
+        refundType,
+        email: booking.customer_email,
+        customerId: booking.customer_id,
+      }),
+    );
+  }
+  await sendCustomerTripEmail(adminClient, {
+    bookingId,
+    reference: booking.reference,
+    customerEmail: booking.customer_email,
+    customerId: booking.customer_id,
+    customerName: booking.customer_name,
+    type: "dispute_resolved",
+  });
+
+  if (booking.operator_id) {
+    await sendOperatorTripEmail(adminClient, {
+      operatorId: booking.operator_id,
+      bookingId,
+      type: "dispute_resolved",
+      reference: booking.reference,
+    });
+  }
+
   revalidatePath("/admin/bookings");
   revalidatePath(`/admin/bookings/${bookingId}`);
   return { success: true };
@@ -77,7 +147,9 @@ export async function resolveDisputeOperatorWins(
 
   const { data: booking, error: readErr } = await supabase
     .from("bookings")
-    .select("id, reference, customer_id, operator_id, completion_status")
+    .select(
+      "id, reference, customer_id, customer_email, customer_name, operator_id, completion_status",
+    )
     .eq("id", bookingId)
     .maybeSingle();
 
@@ -139,6 +211,25 @@ export async function resolveDisputeOperatorWins(
         booking_id: bookingId,
       });
     }
+  }
+
+  const adminClient = createServiceRoleClient();
+  await sendCustomerTripEmail(adminClient, {
+    bookingId,
+    reference: booking.reference,
+    customerEmail: booking.customer_email,
+    customerId: booking.customer_id,
+    customerName: booking.customer_name,
+    type: "dispute_resolved",
+  });
+
+  if (booking.operator_id) {
+    await sendOperatorTripEmail(adminClient, {
+      operatorId: booking.operator_id,
+      bookingId,
+      type: "dispute_resolved",
+      reference: booking.reference,
+    });
   }
 
   revalidatePath("/admin/bookings");

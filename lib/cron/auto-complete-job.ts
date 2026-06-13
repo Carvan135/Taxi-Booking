@@ -4,6 +4,11 @@ import {
   getAutoCompleteWarningHours,
   getPayoutDelayHours,
 } from "@/lib/booking/platform-settings-server";
+import {
+  fireBookingEmail,
+  emitBookingReceiptEmail,
+} from "@/lib/email/booking-events";
+import { sendCustomerTripEmail } from "@/lib/email/dispatch";
 import { getNotificationContent } from "@/lib/notifications/messages";
 import { sendNotification } from "@/lib/notifications/send";
 import { canReceivePayout } from "@/lib/stripe/payoutGuard";
@@ -16,6 +21,8 @@ type BookingCompletionRow = {
   id: string;
   reference: string;
   customer_id: string | null;
+  customer_email: string | null;
+  customer_name: string | null;
   operator_id: string | null;
   auto_complete_at: string | null;
 };
@@ -41,7 +48,7 @@ export async function runAutoCompleteCron(
   const { data: pendingCompletion, error: listError } = await supabase
     .from("bookings")
     .select(
-      "id, reference, customer_id, operator_id, auto_complete_at, completion_status",
+      "id, reference, customer_id, customer_email, customer_name, operator_id, auto_complete_at, completion_status",
     )
     .eq("completion_status", COMPLETION_STATUS.operator_marked_complete)
     .is("dispute_raised_at", null)
@@ -91,6 +98,8 @@ export async function runAutoCompleteCron(
         });
       }
 
+      fireBookingEmail(() => emitBookingReceiptEmail(supabase, booking.id));
+
       if (booking.operator_id) {
         const { data: op } = await supabase
           .from("operators")
@@ -115,16 +124,21 @@ export async function runAutoCompleteCron(
       continue;
     }
 
-    if (autoAt <= new Date(warningDeadline) && booking.customer_id) {
-      const { data: existing } = await supabase
-        .from("notifications")
-        .select("id")
-        .eq("booking_id", booking.id)
-        .eq("type", "auto_complete_warning")
-        .eq("user_id", booking.customer_id)
-        .limit(1);
+    if (
+      autoAt <= new Date(warningDeadline) &&
+      (booking.customer_id || booking.customer_email)
+    ) {
+      if (booking.customer_id) {
+        const { data: existing } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("booking_id", booking.id)
+          .eq("type", "auto_complete_warning")
+          .eq("user_id", booking.customer_id)
+          .limit(1);
 
-      if (existing && existing.length > 0) continue;
+        if (existing && existing.length > 0) continue;
+      }
 
       const hoursLeft = Math.max(
         1,
@@ -134,13 +148,22 @@ export async function runAutoCompleteCron(
         reference: booking.reference,
         hours: String(hoursLeft),
       });
-      await sendNotification({
-        user_id: booking.customer_id,
+      if (booking.customer_id) {
+        await sendNotification({
+          user_id: booking.customer_id,
+          type: "auto_complete_warning",
+          title: content.title,
+          message: content.message,
+          booking_id: booking.id,
+          metadata: { warning_sent: true },
+        });
+      }
+      await sendCustomerTripEmail(supabase, {
+        bookingId: booking.id,
+        reference: booking.reference,
+        customerId: booking.customer_id,
         type: "auto_complete_warning",
-        title: content.title,
-        message: content.message,
-        booking_id: booking.id,
-        metadata: { warning_sent: true },
+        data: { hours: String(hoursLeft) },
       });
       warningsSent += 1;
     }

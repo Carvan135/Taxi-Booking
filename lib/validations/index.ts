@@ -1,4 +1,9 @@
 export {
+  changePasswordSchema,
+  type ChangePasswordFormData,
+  type ChangePasswordFormInput,
+} from "./changePassword";
+export {
   customerSignUpFormSchema,
   isUkPhoneNumber,
   signInSchema,
@@ -26,6 +31,7 @@ export {
 } from "./operatorProfile";
 export {
   basePricingSchema,
+  cancellationSettingsSchema,
   commissionSettingsSchema,
   completionSettingsSchema,
   guestDetailsSchema,
@@ -37,6 +43,8 @@ export {
   returnBookingSchema,
   type BasePricingFormData,
   type BasePricingFormInput,
+  type CancellationSettingsFormData,
+  type CancellationSettingsFormInput,
   type CommissionSettingsFormData,
   type CommissionSettingsFormInput,
   type CompletionSettingsFormData,

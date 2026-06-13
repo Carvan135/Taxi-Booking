@@ -4,6 +4,7 @@ import {
   BOOKING_STATUS,
   COMPLETION_STATUS,
   OPERATOR_STATUS,
+  PAYMENT_STATUSES,
   type BookingStatus,
 } from "@/lib/validations/enums";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -30,6 +31,10 @@ export type AdminBookingRow = {
   assigned_at: string | null;
   payout_eligible_at: string | null;
   payout_released_at: string | null;
+  payment_status: string;
+  refund_amount: number | null;
+  refund_type: string | null;
+  refunded_at: string | null;
   operators: {
     id: string;
     business_name: string;
@@ -47,6 +52,8 @@ export type AdminBookingsSummary = {
   totalCommission: number;
   completionRate: number;
   disputedCount: number;
+  refundsIssued: number;
+  totalRefunded: number;
 };
 
 export type AdminBookingsPageResult = {
@@ -79,12 +86,16 @@ const BOOKING_SELECT = `
   assigned_at,
   payout_eligible_at,
   payout_released_at,
+  payment_status,
+  refund_amount,
+  refund_type,
+  refunded_at,
   operators!bookings_operator_id_fkey ( id, business_name, vehicle_type ),
   profiles!bookings_customer_id_fkey ( full_name, email )
 `;
 
 const SUMMARY_SELECT =
-  "id, status, completion_status, price, platform_commission";
+  "id, status, completion_status, price, platform_commission, payment_status, refund_amount";
 
 async function resolveOperatorIdsForSearch(
   supabase: SupabaseClient,
@@ -121,6 +132,8 @@ function applyAdminBookingFilters(
 
   if (params.status === "disputed") {
     q = q.eq("completion_status", COMPLETION_STATUS.disputed);
+  } else if (params.status === "refunded") {
+    q = q.eq("payment_status", PAYMENT_STATUSES[2]);
   } else if (params.status !== "all") {
     q = q.eq("status", params.status);
   }
@@ -244,6 +257,8 @@ export async function fetchAdminBookingsSummary(
   let totalCommission = 0;
   let completedCount = 0;
   let disputedCount = 0;
+  let refundsIssued = 0;
+  let totalRefunded = 0;
 
   for (const row of rows) {
     const price = row.price != null ? Number(row.price) : 0;
@@ -254,6 +269,12 @@ export async function fetchAdminBookingsSummary(
     }
     if (row.completion_status === COMPLETION_STATUS.disputed) {
       disputedCount += 1;
+    }
+    const refundAmount =
+      row.refund_amount != null ? Number(row.refund_amount) : 0;
+    if (row.payment_status === PAYMENT_STATUSES[2] || refundAmount > 0) {
+      refundsIssued += 1;
+      totalRefunded += refundAmount;
     }
   }
 
@@ -268,6 +289,8 @@ export async function fetchAdminBookingsSummary(
     totalCommission,
     completionRate,
     disputedCount,
+    refundsIssued,
+    totalRefunded,
   };
 }
 

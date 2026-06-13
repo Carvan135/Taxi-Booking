@@ -21,6 +21,7 @@ function menuEntries(role: UserRole): MenuEntry[] {
     case "customer":
       return [
         { kind: "link", href: "/bookings", label: "My Bookings" },
+        { kind: "link", href: "/profile", label: "Profile" },
         { kind: "logout" },
       ];
     case "operator":
@@ -33,6 +34,7 @@ function menuEntries(role: UserRole): MenuEntry[] {
     case "admin":
       return [
         { kind: "link", href: "/admin/dashboard", label: "Dashboard" },
+        { kind: "link", href: "/admin/profile", label: "Profile" },
         { kind: "logout" },
       ];
   }

@@ -5,6 +5,8 @@ const DEFAULT_COMMISSION_PERCENT = 10;
 const DEFAULT_PAYOUT_DELAY_HOURS = 24;
 const DEFAULT_AUTO_COMPLETE_HOURS = 24;
 const DEFAULT_AUTO_COMPLETE_WARNING_HOURS = 2;
+const DEFAULT_CANCELLATION_CUTOFF_HOURS = 24;
+const DEFAULT_CANCELLATION_FULL_REFUND_HOURS = 24;
 
 async function getSettingValue(
   key: string,
@@ -68,5 +70,46 @@ export async function getAutoCompleteWarningHours(
 }
 
 export function addHours(isoBase: Date, hours: number): string {
-  return new Date(isoBase.getTime() + hours * 60 * 60 * 1000).toISOString();
+  return new Date(
+    isoBase.getTime() + hours * 60 * 60 * 1000,
+  ).toISOString();
+}
+
+export async function getCancellationCutoffHours(
+  client?: SupabaseClient,
+): Promise<number> {
+  const value = await getSettingValue("cancellation_cutoff_hours", client);
+  return parsePositiveInt(value, DEFAULT_CANCELLATION_CUTOFF_HOURS);
+}
+
+export async function getCancellationFullRefundHours(
+  client?: SupabaseClient,
+): Promise<number> {
+  const value = await getSettingValue("cancellation_full_refund_hours", client);
+  return parsePositiveInt(value, DEFAULT_CANCELLATION_FULL_REFUND_HOURS);
+}
+
+export async function getPartialRefundEnabled(
+  client?: SupabaseClient,
+): Promise<boolean> {
+  const value = await getSettingValue("partial_refund_enabled", client);
+  if (value === undefined || value === null) return true;
+  return value === "true";
+}
+
+export type CancellationPolicySettings = {
+  cutoffHours: number;
+  fullRefundHours: number;
+  partialRefundEnabled: boolean;
+};
+
+export async function getCancellationPolicySettings(
+  client?: SupabaseClient,
+): Promise<CancellationPolicySettings> {
+  const [cutoffHours, fullRefundHours, partialRefundEnabled] = await Promise.all([
+    getCancellationCutoffHours(client),
+    getCancellationFullRefundHours(client),
+    getPartialRefundEnabled(client),
+  ]);
+  return { cutoffHours, fullRefundHours, partialRefundEnabled };
 }

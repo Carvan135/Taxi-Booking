@@ -39,6 +39,10 @@ export type NotificationStatus = "unread" | "read";
 
 export type PaymentStatus = "unpaid" | "paid" | "refunded" | "failed";
 
+export type RefundType = "full" | "partial" | "none";
+
+export type EmailLogStatus = "sent" | "failed" | "bounced";
+
 export type BookingType = "one_way" | "return";
 
 export type BookingLeg = "outbound" | "return";
@@ -135,8 +139,29 @@ export type Booking = {
   auto_complete_at: string | null;
   dispute_raised_at: string | null;
   dispute_reason: string | null;
+  refund_amount: number | null;
+  refund_type: RefundType | null;
+  refunded_at: string | null;
+  refunded_by: string | null;
+  stripe_refund_id: string | null;
+  cancellation_reason: string | null;
+  cancelled_at: string | null;
+  cancelled_by: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type EmailLog = {
+  id: string;
+  booking_id: string | null;
+  user_id: string | null;
+  email_to: string;
+  email_type: string;
+  subject: string;
+  status: EmailLogStatus;
+  resend_id: string | null;
+  error_message: string | null;
+  created_at: string;
 };
 
 export type Notification = {

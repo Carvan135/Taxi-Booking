@@ -4,6 +4,10 @@ import {
   addHours,
   getAutoCompleteHours,
 } from "@/lib/booking/platform-settings-server";
+import {
+  fireBookingEmail,
+  emitCompletionRequestEmail,
+} from "@/lib/email/booking-events";
 import { getNotificationContent } from "@/lib/notifications/messages";
 import { sendNotification } from "@/lib/notifications/send";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
@@ -40,7 +44,7 @@ export async function POST(_req: Request, context: RouteContext) {
     const { data: booking, error: readError } = await supabase
       .from("bookings")
       .select(
-        "id, reference, status, operator_id, customer_id, completion_status, journey_started_at, payment_status",
+        "id, reference, status, operator_id, customer_id, customer_email, customer_name, completion_status, journey_started_at, payment_status",
       )
       .eq("id", bookingId)
       .maybeSingle();
@@ -87,11 +91,12 @@ export async function POST(_req: Request, context: RouteContext) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
+    const content = getNotificationContent("operator_marked_complete", {
+      reference: booking.reference,
+      hours: String(autoCompleteHours),
+    });
+
     if (booking.customer_id) {
-      const content = getNotificationContent("operator_marked_complete", {
-        reference: booking.reference,
-        hours: String(autoCompleteHours),
-      });
       await sendNotification({
         user_id: booking.customer_id,
         type: "operator_marked_complete",
@@ -101,6 +106,16 @@ export async function POST(_req: Request, context: RouteContext) {
         metadata: { reference: booking.reference },
       });
     }
+
+    fireBookingEmail(() =>
+      emitCompletionRequestEmail(admin, {
+        bookingId,
+        reference: booking.reference,
+        customerEmail: booking.customer_email,
+        customerId: booking.customer_id,
+        autoCompleteHours,
+      }),
+    );
 
     return NextResponse.json({
       success: true,

@@ -9,6 +9,7 @@ import {
   type NavbarUserMenuSession,
 } from "@/components/layout/NavbarUserMenu";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { SITE_NAME } from "@/lib/site/contact";
 
 type NavbarVariant = "public" | "customer";
 
@@ -23,7 +24,7 @@ const publicPrimaryLinks = [
   { href: "/book", label: "Book Now" },
   { href: "/bookings", label: "My Bookings" },
   { href: "/#contact", label: "Contact" },
-  { href: "/#faq", label: "FAQ" },
+  { href: "/faq", label: "FAQ" },
 ] as const;
 
 const publicSecondaryLinks = [
@@ -74,7 +75,7 @@ export function Navbar({ variant, session = null }: NavbarProps) {
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
               <Car className="h-5 w-5 text-white" aria-hidden />
             </span>
-            TaxiBook
+            {SITE_NAME}
           </Link>
 
           <div className="hidden flex-1 items-center justify-center gap-6 lg:flex xl:gap-8">
@@ -210,7 +211,7 @@ export function Navbar({ variant, session = null }: NavbarProps) {
           className="flex items-center gap-2 text-lg font-bold text-primary"
         >
           <Car className="h-6 w-6 text-secondary" aria-hidden />
-          TaxiBook
+          {SITE_NAME}
         </Link>
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
           {customerLinks.map(({ href, label }) => {
