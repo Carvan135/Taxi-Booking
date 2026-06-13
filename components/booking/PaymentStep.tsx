@@ -58,6 +58,7 @@ export function PaymentStep() {
     Promise<Stripe | null> | null
   >(null);
 
+  console.log(isLoadingIntent, "isLoadingIntent", stripeClient, "stripeClient", clientSecret, "clientSecret");
   const { data: profile } = useProfile();
 
   useEffect(() => {
@@ -276,6 +277,7 @@ export function PaymentStep() {
           {stripeConfigError}
         </div>
       ) : null}
+
 
       {(isLoadingIntent || stripeClient === undefined) && !clientSecret ? (
         <p className="mt-10 text-center text-sm text-content/60">
