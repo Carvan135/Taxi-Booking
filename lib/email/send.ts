@@ -1,4 +1,5 @@
-import { resend, EMAIL_FROM } from "@/lib/email/client";
+import { getEmailFrom, getResendClient } from "@/lib/email/client";
+import { isEmailConfigured } from "@/lib/email/config";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 export type SendEmailParams = {
@@ -50,9 +51,18 @@ async function recordEmailAttempt(
 export async function sendEmail(
   params: SendEmailParams,
 ): Promise<SendEmailResult> {
+  if (!isEmailConfigured()) {
+    const message = "Email is not configured (RESEND_API_KEY / RESEND_FROM_EMAIL)";
+    await recordEmailAttempt(params, {
+      status: "failed",
+      errorMessage: message,
+    });
+    return { success: false, error: message };
+  }
+
   try {
-    const { data, error } = await resend.emails.send({
-      from: EMAIL_FROM,
+    const { data, error } = await getResendClient().emails.send({
+      from: getEmailFrom(),
       to: params.to,
       subject: params.subject,
       html: params.html,

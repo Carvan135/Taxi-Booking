@@ -1,4 +1,4 @@
-const LABELS: Record<string, string> = {
+export const EMAIL_TYPE_LABELS: Record<string, string> = {
   booking_confirmation: "Booking confirmation",
   booking_receipt: "Payment receipt",
   refund_confirmation: "Refund confirmation",
@@ -16,7 +16,15 @@ const LABELS: Record<string, string> = {
 
 export function formatEmailTypeLabel(emailType: string): string {
   return (
-    LABELS[emailType] ??
+    EMAIL_TYPE_LABELS[emailType] ??
     emailType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
   );
 }
+
+export const EMAIL_TYPE_FILTER_OPTIONS = [
+  { value: "all", label: "All email types" },
+  ...Object.entries(EMAIL_TYPE_LABELS).map(([value, label]) => ({
+    value,
+    label,
+  })),
+] as const;

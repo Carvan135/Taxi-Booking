@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Calendar,
   LayoutDashboard,
+  Mail,
   Percent,
   Shield,
   User,
@@ -29,6 +30,7 @@ const operatorItems: NavItem[] = [
 const adminItems: NavItem[] = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/bookings", label: "Bookings", icon: Calendar },
+  { href: "/admin/emails", label: "Email log", icon: Mail },
   { href: "/admin/operators", label: "Operators", icon: Users },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/profile", label: "Profile", icon: User },
