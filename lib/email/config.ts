@@ -11,6 +11,14 @@ export function isEmailConfigured(): boolean {
   );
 }
 
+export function isResendApiKeyConfigured(): boolean {
+  return getResendApiKey() !== null;
+}
+
+export function isResendFromEmailConfigured(): boolean {
+  return Boolean(process.env.RESEND_FROM_EMAIL?.trim());
+}
+
 /** Verified sender, e.g. `AirportHub <noreply@airporthub.co.uk>`. */
 export function getEmailFromAddress(): string {
   const legacy = process.env.EMAIL_FROM?.trim();
