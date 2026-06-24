@@ -39,13 +39,11 @@ export async function POST(req: Request) {
 
     const commissionPercent = await getCommissionPercentage();
 
-    let query = supabase
+    const { data: operatorRows, error } = await supabase
       .from("operators")
       .select("id, vehicle_type, fleet_vehicle_types")
       .eq("status", OPERATOR_STATUS.approved)
       .eq("is_paused", false);
-
-    const { data: operatorRows, error } = await query;
     if (error) {
       console.error("booking/quotes operators query:", error);
       return NextResponse.json(

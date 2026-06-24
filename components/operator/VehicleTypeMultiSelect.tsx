@@ -35,13 +35,7 @@ export function VehicleTypeMultiSelect({
           Select every vehicle category in your fleet. Customers will only see
           you for bookings that match these types.
         </p>
-        <div
-          id={id}
-          className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-          role="group"
-          aria-invalid={error ? "true" : "false"}
-          aria-describedby={error ? errorId : undefined}
-        >
+        <div id={id} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {OPERATOR_FLEET_VEHICLE_TYPES.map((type) => {
             const checked = value.includes(type);
             return (
