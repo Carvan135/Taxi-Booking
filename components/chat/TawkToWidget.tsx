@@ -20,9 +20,12 @@ export function TawkToWidget() {
   const consent = useOptionalCookieConsent();
   const isStaff =
     pathname.startsWith("/admin") || pathname.startsWith("/operator");
+  const isReady = consent?.isReady === true;
   const hasFunctionalConsent = consent?.hasFunctionalConsent === true;
 
   useEffect(() => {
+    if (!isReady) return;
+
     if (isStaff || !hasFunctionalConsent) {
       removeTawkWidget();
       return;
@@ -30,18 +33,17 @@ export function TawkToWidget() {
 
     if (document.querySelector('script[src*="tawk.to"]')) return;
 
-    const s1 = document.createElement("script");
-    const s0 = document.getElementsByTagName("script")[0];
-    s1.async = true;
-    s1.src = TAWK_SCRIPT_SRC;
-    s1.charset = "UTF-8";
-    s1.setAttribute("crossorigin", "*");
-    s0.parentNode?.insertBefore(s1, s0);
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = TAWK_SCRIPT_SRC;
+    script.charset = "UTF-8";
+    script.setAttribute("crossorigin", "*");
+    document.body.appendChild(script);
 
     return () => {
       removeTawkWidget();
     };
-  }, [hasFunctionalConsent, isStaff]);
+  }, [hasFunctionalConsent, isReady, isStaff]);
 
   return null;
 }

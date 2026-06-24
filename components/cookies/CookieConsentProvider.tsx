@@ -26,6 +26,7 @@ import { persistCookieConsent } from "@/lib/cookies/storage";
 
 type CookieConsentContextValue = {
   consent: CookieConsentRecord | null;
+  isReady: boolean;
   hasDecided: boolean;
   hasFunctionalConsent: boolean;
   hasAnalyticsConsent: boolean;
@@ -266,6 +267,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
   const value = useMemo<CookieConsentContextValue>(
     () => ({
       consent,
+      isReady: hydrated,
       hasDecided: consent?.version === COOKIE_CONSENT_VERSION,
       hasFunctionalConsent: consent?.functional === true,
       hasAnalyticsConsent: consent?.analytics === true,
@@ -274,7 +276,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
       savePreferences,
       openPreferences,
     }),
-    [acceptAll, consent, openPreferences, rejectNonEssential, savePreferences],
+    [acceptAll, consent, hydrated, openPreferences, rejectNonEssential, savePreferences],
   );
 
   return (

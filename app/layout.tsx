@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { TawkToWidget } from "@/components/chat/TawkToWidget";
 import { SITE_NAME } from "@/lib/site/contact";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -18,7 +17,6 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans antialiased">
         <Providers>{children}</Providers>
-        <TawkToWidget />
       </body>
     </html>
   );
