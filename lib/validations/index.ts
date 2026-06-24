@@ -41,6 +41,7 @@ export {
   predefinedPriceRuleSchema,
   priceRuleSchema,
   returnBookingSchema,
+  smsSettingsSchema,
   type BasePricingFormData,
   type BasePricingFormInput,
   type CancellationSettingsFormData,
@@ -63,6 +64,8 @@ export {
   type PriceRuleFormInput,
   type ReturnBookingFormData,
   type ReturnBookingFormInput,
+  type SmsSettingsFormData,
+  type SmsSettingsFormInput,
 } from "./booking";
 export {
   BOOKING_LEGS,

@@ -70,7 +70,13 @@ export async function emitBookingCreatedEmails(
     supabase,
     primaryReference,
   );
-  if (!snapshot?.customer_email) return;
+  if (!snapshot?.customer_email) {
+    console.warn(
+      "booking confirmation email skipped: no snapshot for reference",
+      primaryReference,
+    );
+    return;
+  }
 
   const customerEmail = snapshot.customer_email.trim();
   if (!customerEmail) return;

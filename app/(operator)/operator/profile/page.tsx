@@ -2,11 +2,9 @@ import { User } from "lucide-react";
 import { ChangePasswordForm } from "@/components/auth/ChangePasswordForm";
 import { OperatorProfileForm } from "@/components/operator/OperatorProfileForm";
 import { createClient } from "@/lib/supabase/server";
+import { resolveOperatorFleetTypes } from "@/lib/operator/fleet-vehicle-types";
 import type { OperatorStatus } from "@/types";
-import {
-  operatorProfileVehicleTypes,
-  type OperatorProfileFormValues,
-} from "@/lib/validations/operatorProfile";
+import type { OperatorProfileFormValues } from "@/lib/validations/operatorProfile";
 
 export default async function OperatorProfilePage() {
   const supabase = createClient();
@@ -49,14 +47,12 @@ export default async function OperatorProfilePage() {
           raw.fleet_vehicle_count == null
             ? null
             : Number(raw.fleet_vehicle_count),
-        vehicle_type: (() => {
-          const v = String(raw.vehicle_type ?? "Sedan");
-          return operatorProfileVehicleTypes.includes(
-            v as (typeof operatorProfileVehicleTypes)[number],
-          )
-            ? (v as (typeof operatorProfileVehicleTypes)[number])
-            : "Sedan";
-        })(),
+        fleet_vehicle_types:
+          raw.fleet_vehicle_types == null
+            ? null
+            : String(raw.fleet_vehicle_types),
+        vehicle_type:
+          raw.vehicle_type == null ? null : String(raw.vehicle_type),
         license_number: String(raw.license_number ?? ""),
         license_expiry: String(raw.license_expiry ?? "").slice(0, 10),
       }
@@ -97,7 +93,10 @@ export default async function OperatorProfilePage() {
     phone: profile?.phone ?? "",
     business_address: op?.business_address ?? "",
     business_description: op?.business_description ?? "",
-    vehicle_type: op?.vehicle_type ?? "Sedan",
+    fleet_vehicle_types: resolveOperatorFleetTypes({
+      fleet_vehicle_types: op?.fleet_vehicle_types ?? null,
+      vehicle_type: op?.vehicle_type ?? null,
+    }),
     license_number: op?.license_number ?? "",
     license_expiry: op?.license_expiry ?? "",
     fleet_vehicle_count: op?.fleet_vehicle_count ?? 1,

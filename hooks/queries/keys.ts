@@ -18,6 +18,10 @@ export const platformSettingsKeys = {
   all: ["platform_settings"] as const,
 };
 
+export const policyDocumentKeys = {
+  all: ["policy_documents"] as const,
+};
+
 export const adminBookingKeys = {
   all: ["admin", "bookings"] as const,
 };

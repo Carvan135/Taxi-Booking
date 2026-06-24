@@ -4,6 +4,7 @@ import { ArrowLeft, Shield, Star } from "lucide-react";
 import { OperatorDetailActions } from "@/components/admin/OperatorDetailActions";
 import { OperatorLicensePreview } from "@/components/admin/OperatorLicensePreview";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { formatFleetVehicleTypesDisplay } from "@/lib/operator/fleet-vehicle-types";
 import { createClient } from "@/lib/supabase/server";
 
 function formatMoneyGBP(n: number): string {
@@ -29,7 +30,7 @@ export default async function AdminOperatorDetailPage({ params }: PageProps) {
   const { data: op, error } = await supabase
     .from("operators")
     .select(
-      "id, business_name, status, rating, total_reviews, created_at, updated_at, stripe_onboarding_complete, fleet_vehicle_count, business_address, vehicle_type, base_price, user_id, license_document_url, license_number, license_expiry, vehicle_registration",
+      "id, business_name, status, rating, total_reviews, created_at, updated_at, stripe_onboarding_complete, fleet_vehicle_count, fleet_vehicle_types, business_address, vehicle_type, base_price, user_id, license_document_url, license_number, license_expiry, vehicle_registration",
     )
     .eq("id", id)
     .maybeSingle();
@@ -189,9 +190,11 @@ export default async function AdminOperatorDetailPage({ params }: PageProps) {
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
-                Default vehicle type
+                Vehicle types
               </dt>
-              <dd className="mt-1 text-sm text-[#111827]">{op.vehicle_type}</dd>
+              <dd className="mt-1 text-sm text-[#111827]">
+                {formatFleetVehicleTypesDisplay(op)}
+              </dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">

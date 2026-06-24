@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { AdminPolicyDocumentsCard } from "@/components/admin/AdminPolicyDocumentsCard";
 import { BOOK_TRIP_INPUT_CLASS } from "@/components/booking/booking-form-styles";
 import { Button } from "@/components/ui/Button";
 import {
@@ -15,10 +16,12 @@ import {
   commissionSettingsSchema,
   completionSettingsSchema,
   payoutSettingsSchema,
+  smsSettingsSchema,
   type CancellationSettingsFormInput,
   type CommissionSettingsFormInput,
   type CompletionSettingsFormInput,
   type PayoutSettingsFormInput,
+  type SmsSettingsFormInput,
 } from "@/lib/validations";
 import type { PlatformSetting } from "@/types";
 
@@ -31,6 +34,8 @@ const KEYS = {
   cancellationCutoff: "cancellation_cutoff_hours",
   cancellationFullRefund: "cancellation_full_refund_hours",
   partialRefund: "partial_refund_enabled",
+  smsEnabled: "sms_reminders_enabled",
+  smsHoursBefore: "sms_reminder_hours_before",
 } as const;
 
 const DEFAULTS = {
@@ -42,6 +47,8 @@ const DEFAULTS = {
   cancellationCutoff: 24,
   cancellationFullRefund: 24,
   partialRefund: true,
+  smsEnabled: true,
+  smsHoursBefore: 2,
 } as const;
 
 function settingsByKey(rows: PlatformSetting[]): Record<string, string> {
@@ -86,6 +93,18 @@ function parseCancellationHours(value: string | undefined, fallback: number): nu
     : fallback;
 }
 
+function parseSmsHoursBefore(value: string | undefined): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 1 && n <= 24
+    ? Math.round(n)
+    : DEFAULTS.smsHoursBefore;
+}
+
+function parseSmsEnabled(value: string | undefined): boolean {
+  if (value === undefined) return DEFAULTS.smsEnabled;
+  return value === "true";
+}
+
 function commissionPreviewText(percent: number): string {
   const platform = (100 * percent) / 100;
   const operator = 100 - platform;
@@ -100,6 +119,7 @@ export function AdminSettingsPage() {
   const [payoutSaving, setPayoutSaving] = useState(false);
   const [completionSaving, setCompletionSaving] = useState(false);
   const [cancellationSaving, setCancellationSaving] = useState(false);
+  const [smsSaving, setSmsSaving] = useState(false);
 
   const map = useMemo(() => settingsByKey(rows), [rows]);
   const savedCommission = parseCommission(map[KEYS.commission]);
@@ -136,6 +156,14 @@ export function AdminSettingsPage() {
     },
   });
 
+  const smsForm = useForm<SmsSettingsFormInput>({
+    resolver: zodResolver(smsSettingsSchema),
+    defaultValues: {
+      sms_reminder_hours_before: DEFAULTS.smsHoursBefore,
+      sms_reminders_enabled: DEFAULTS.smsEnabled,
+    },
+  });
+
   useEffect(() => {
     if (rows.length === 0) return;
     commissionForm.reset({
@@ -164,6 +192,10 @@ export function AdminSettingsPage() {
         map[KEYS.partialRefund] === undefined
           ? DEFAULTS.partialRefund
           : map[KEYS.partialRefund] === "true",
+    });
+    smsForm.reset({
+      sms_reminder_hours_before: parseSmsHoursBefore(map[KEYS.smsHoursBefore]),
+      sms_reminders_enabled: parseSmsEnabled(map[KEYS.smsEnabled]),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when DB values load
   }, [rows.length, savedCommission, savedPayoutDelay, savedPayoutEarly]);
@@ -274,6 +306,28 @@ export function AdminSettingsPage() {
     }
   });
 
+  const onSaveSms = smsForm.handleSubmit(async (values) => {
+    setSmsSaving(true);
+    try {
+      await updateSetting.mutateAsync({
+        key: KEYS.smsEnabled,
+        value: values.sms_reminders_enabled ? "true" : "false",
+      });
+      await updateSetting.mutateAsync({
+        key: KEYS.smsHoursBefore,
+        value: String(values.sms_reminder_hours_before),
+      });
+      showSuccess("SMS reminder settings saved.");
+    } catch (e) {
+      smsForm.setError("root", {
+        message:
+          e instanceof Error ? e.message : "Could not save SMS settings.",
+      });
+    } finally {
+      setSmsSaving(false);
+    }
+  });
+
   return (
     <div className="min-h-full bg-[#F9FAFB] px-4 py-8 sm:px-6 lg:px-8">
       {toast ? (
@@ -295,7 +349,7 @@ export function AdminSettingsPage() {
               Platform Settings
             </h1>
             <p className="mt-1 text-sm text-[#6B7280]">
-              Commission, payouts, completion, and cancellation policy
+              Commission, payouts, completion, cancellation, SMS, and policy PDFs
             </p>
           </div>
         </header>
@@ -605,6 +659,81 @@ export function AdminSettingsPage() {
                 </Button>
               </form>
             </section>
+
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-[#111827]">
+                SMS reminders
+              </h2>
+              <p className="mt-1 text-sm text-[#6B7280]">
+                Text customers before pickup using their booking phone number
+              </p>
+
+              <form
+                onSubmit={onSaveSms}
+                className="mt-5 space-y-4"
+                noValidate
+              >
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#111827]">
+                      Enable SMS reminders
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#6B7280]">
+                      Sends one reminder per confirmed booking leg
+                    </p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      className="peer sr-only"
+                      {...smsForm.register("sms_reminders_enabled")}
+                    />
+                    <span className="h-7 w-12 rounded-full bg-slate-300 transition peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-secondary peer-focus-visible:ring-offset-2 after:absolute after:left-0.5 after:top-0.5 after:h-6 after:w-6 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-5" />
+                  </label>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="sms_reminder_hours_before"
+                    className="text-sm font-medium text-[#111827]"
+                  >
+                    Hours before pickup
+                  </label>
+                  <p className="mt-0.5 text-xs text-[#6B7280]">
+                    Customers will receive a text reminder this many hours
+                    before their scheduled pickup time
+                  </p>
+                  <input
+                    id="sms_reminder_hours_before"
+                    type="number"
+                    min={1}
+                    max={24}
+                    step={1}
+                    className={`${BOOK_TRIP_INPUT_CLASS} max-w-[160px] mt-1.5`}
+                    {...smsForm.register("sms_reminder_hours_before", {
+                      valueAsNumber: true,
+                    })}
+                  />
+                  {smsForm.formState.errors.sms_reminder_hours_before?.message ? (
+                    <p className="mt-1.5 text-sm text-red-600" role="alert">
+                      {smsForm.formState.errors.sms_reminder_hours_before.message}
+                    </p>
+                  ) : null}
+                </div>
+
+                {smsForm.formState.errors.root?.message ? (
+                  <p className="text-sm text-red-600" role="alert">
+                    {smsForm.formState.errors.root.message}
+                  </p>
+                ) : null}
+
+                <Button type="submit" loading={smsSaving}>
+                  Save SMS settings
+                </Button>
+              </form>
+            </section>
+
+            <AdminPolicyDocumentsCard onToast={showSuccess} />
 
             <p className="rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950">
               Policy changes apply immediately to new cancellation checks.

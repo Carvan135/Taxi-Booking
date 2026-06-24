@@ -43,6 +43,14 @@ export type RefundType = "full" | "partial" | "none";
 
 export type EmailLogStatus = "sent" | "failed" | "bounced";
 
+export type SmsLogStatus = "sent" | "failed";
+
+export type PolicyType =
+  | "privacy_policy"
+  | "terms_conditions"
+  | "faq"
+  | "cookie_policy";
+
 export type BookingType = "one_way" | "return";
 
 export type BookingLeg = "outbound" | "return";
@@ -52,11 +60,16 @@ export type ServiceType = "standard" | "executive" | "van" | "suv";
 export type RuleType = "multiplier" | "fixed_fee";
 
 export type VehicleType =
+  | "Saloon"
+  | "EV"
+  | "Estate"
+  | "MPV"
+  | "Executive"
+  | "8 Seater"
+  | "Luxury"
   | "Sedan"
   | "SUV"
-  | "Luxury"
-  | "Van"
-  | "Executive";
+  | "Van";
 
 export type Profile = {
   id: string;
@@ -147,6 +160,8 @@ export type Booking = {
   cancellation_reason: string | null;
   cancelled_at: string | null;
   cancelled_by: string | null;
+  sms_reminder_sent_at: string | null;
+  customer_phone_verified: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -162,6 +177,27 @@ export type EmailLog = {
   resend_id: string | null;
   error_message: string | null;
   created_at: string;
+};
+
+export type SmsLog = {
+  id: string;
+  booking_id: string | null;
+  phone_to: string;
+  message: string;
+  status: SmsLogStatus;
+  twilio_sid: string | null;
+  error_message: string | null;
+  created_at: string;
+};
+
+export type PolicyDocument = {
+  id: string;
+  policy_type: PolicyType;
+  file_path: string;
+  file_name: string;
+  uploaded_by: string | null;
+  uploaded_at: string;
+  version: number;
 };
 
 export type Notification = {

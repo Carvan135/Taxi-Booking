@@ -2,6 +2,8 @@
 
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useOptionalCookieConsent } from "@/components/cookies/CookieConsentProvider";
+import { SITE_EMAILS } from "@/lib/site/contact";
 
 type TawkApi = {
   maximize?: () => void;
@@ -11,6 +13,7 @@ type TawkApi = {
 declare global {
   interface Window {
     Tawk_API?: TawkApi;
+    Tawk_LoadStart?: Date;
   }
 }
 
@@ -35,12 +38,34 @@ export function OpenTawkChatButton({
   className = "",
   children = "Start live chat",
 }: OpenTawkChatButtonProps) {
+  const consent = useOptionalCookieConsent();
+
+  if (consent && !consent.hasFunctionalConsent) {
+    return (
+      <Button
+        type="button"
+        variant="primary"
+        className={className}
+        onClick={consent.openPreferences}
+      >
+        <MessageCircle className="mr-2 h-4 w-4" aria-hidden />
+        Enable chat cookies
+      </Button>
+    );
+  }
+
   return (
     <Button
       type="button"
       variant="primary"
       className={className}
-      onClick={openTawkChat}
+      onClick={() => {
+        if (window.Tawk_API?.maximize || window.Tawk_API?.toggle) {
+          openTawkChat();
+          return;
+        }
+        window.location.href = `mailto:${SITE_EMAILS.support}`;
+      }}
     >
       <MessageCircle className="mr-2 h-4 w-4" aria-hidden />
       {children}

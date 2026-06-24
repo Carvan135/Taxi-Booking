@@ -11,18 +11,11 @@ import type { Resolver } from "react-hook-form";
 import type { DefaultValues } from "react-hook-form";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
+import { VehicleTypeMultiSelect } from "@/components/operator/VehicleTypeMultiSelect";
 import { signUp } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/client";
 import { operatorSignUpFormSchema } from "@/lib/validations";
 import type { z } from "zod";
-
-const vehicleOptions = [
-  "Sedan",
-  "SUV",
-  "Luxury",
-  "Van",
-  "Executive",
-] as const;
 
 type FormInput = z.infer<typeof operatorSignUpFormSchema>;
 
@@ -95,7 +88,7 @@ export default function OperatorSignupPage() {
       email: "",
       phone: "",
       password: "",
-      vehicle_type: "Sedan",
+      fleet_vehicle_types: ["Saloon"],
       vehicle_registration: "",
       license_number: "",
       license_expiry: "",
@@ -106,7 +99,7 @@ export default function OperatorSignupPage() {
 
   const termsAccepted = watch("terms_accepted") === true;
 
-  const vehicleTypeErrorId = "vehicle_type-error";
+  const fleetVehicleTypesErrorId = "fleet_vehicle_types-error";
   const licenseExpiryErrorId = "license_expiry-error";
   const basePriceErrorId = "base_price-error";
 
@@ -138,7 +131,7 @@ export default function OperatorSignupPage() {
       role: "operator",
       operatorApplication: {
         business_name: data.business_name,
-        vehicle_type: data.vehicle_type,
+        fleet_vehicle_types: data.fleet_vehicle_types,
         vehicle_registration: data.vehicle_registration,
         license_number: data.license_number,
         license_expiry: data.license_expiry,
@@ -352,37 +345,23 @@ export default function OperatorSignupPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
-          <div className="w-full">
-            <label
-              htmlFor="vehicle_type"
-              className="mb-1.5 block text-sm font-medium text-content"
-            >
-              Vehicle type *
-            </label>
-            <select
-              id="vehicle_type"
-              className="w-full rounded-xl border border-gray-300 bg-slate-50 px-4 py-2.5 text-content shadow-sm focus:border-secondary focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              {...register("vehicle_type")}
-              aria-invalid={errors.vehicle_type ? "true" : "false"}
-              aria-describedby={
-                errors.vehicle_type ? vehicleTypeErrorId : undefined
-              }
-            >
-              {vehicleOptions.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-            {errors.vehicle_type?.message ? (
-              <p
-                id={vehicleTypeErrorId}
-                className="mt-1.5 text-sm text-red-600"
-                role="alert"
-              >
-                {errors.vehicle_type.message}
-              </p>
-            ) : null}
+          <div className="md:col-span-2">
+            <Controller
+              name="fleet_vehicle_types"
+              control={control}
+              render={({ field }) => (
+                <VehicleTypeMultiSelect
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                  error={
+                    errors.fleet_vehicle_types?.message
+                      ? String(errors.fleet_vehicle_types.message)
+                      : undefined
+                  }
+                  errorId={fleetVehicleTypesErrorId}
+                />
+              )}
+            />
           </div>
           <FormField
             label="Vehicle registration number *"

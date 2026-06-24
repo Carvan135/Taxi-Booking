@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { EmailLog } from "@/types";
+import type { EmailLog, SmsLog } from "@/types";
 
 export type AdminBookingActor = {
   id: string;
@@ -40,7 +40,9 @@ export type AdminBookingDetail = {
   customer: { full_name: string | null; email: string } | null;
   refunded_by: AdminBookingActor | null;
   cancelled_by: AdminBookingActor | null;
+  sms_reminder_sent_at: string | null;
   email_logs: EmailLog[];
+  sms_logs: SmsLog[];
 };
 
 export async function fetchAdminBookingDetail(
@@ -84,6 +86,13 @@ export async function fetchAdminBookingDetail(
 
   const { data: emailLogs } = await supabase
     .from("email_logs")
+    .select("*")
+    .eq("booking_id", bookingId)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const { data: smsLogs } = await supabase
+    .from("sms_logs")
     .select("*")
     .eq("booking_id", bookingId)
     .order("created_at", { ascending: false })
@@ -138,6 +147,8 @@ export async function fetchAdminBookingDetail(
     cancelled_by: booking.cancelled_by
       ? (actors.get(booking.cancelled_by as string) ?? null)
       : null,
+    sms_reminder_sent_at: booking.sms_reminder_sent_at as string | null,
     email_logs: (emailLogs ?? []) as EmailLog[],
+    sms_logs: (smsLogs ?? []) as SmsLog[],
   };
 }

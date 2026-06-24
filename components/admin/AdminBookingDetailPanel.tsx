@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, PoundSterling, Scale, Shield } from "lucide-react";
+import { Mail, MessageSquare, PoundSterling, Scale, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { AdminBookingStatusBadge } from "@/components/admin/AdminBookingStatusBadge";
@@ -18,6 +18,7 @@ import {
   useProcessRefundMutation,
   useReleasePayoutMutation,
   useResendConfirmationMutation,
+  useResendSmsReminderMutation,
 } from "@/hooks/queries/useAdminBookings";
 import {
   COMPLETION_STATUS,
@@ -62,6 +63,7 @@ export function AdminBookingDetailPanel({
   const releasePayoutMutation = useReleasePayoutMutation();
   const processRefundMutation = useProcessRefundMutation();
   const resendConfirmationMutation = useResendConfirmationMutation();
+  const resendSmsReminderMutation = useResendSmsReminderMutation();
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -198,6 +200,23 @@ export function AdminBookingDetailPanel({
     } catch (e) {
       setActionError(
         e instanceof Error ? e.message : "Could not resend confirmation",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleResendSmsReminder() {
+    setActionError(null);
+    setActionSuccess(null);
+    setBusy("resend-sms");
+    try {
+      await resendSmsReminderMutation.mutateAsync(booking.id);
+      setActionSuccess("SMS reminder sent.");
+      router.refresh();
+    } catch (e) {
+      setActionError(
+        e instanceof Error ? e.message : "Could not resend SMS reminder",
       );
     } finally {
       setBusy(null);
@@ -496,6 +515,69 @@ export function AdminBookingDetailPanel({
                 <p className="mt-1 text-xs text-[#9CA3AF]">
                   Sent {formatWhen(log.created_at)}
                   {log.resend_id ? ` · ${log.resend_id}` : ""}
+                </p>
+                {log.error_message ? (
+                  <p className="mt-1 text-xs text-red-600">{log.error_message}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-secondary" aria-hidden />
+              <h2 className="text-lg font-semibold text-[#111827]">SMS log</h2>
+            </div>
+            <p className="mt-1 text-sm text-[#6B7280]">
+              Pickup reminder texts for this booking
+              {booking.sms_reminder_sent_at
+                ? ` · scheduled reminder marked ${formatWhen(booking.sms_reminder_sent_at)}`
+                : ""}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            loading={busy === "resend-sms"}
+            disabled={busy !== null && busy !== "resend-sms"}
+            onClick={() => void handleResendSmsReminder()}
+          >
+            Resend reminder
+          </Button>
+        </div>
+
+        {booking.sms_logs.length === 0 ? (
+          <p className="mt-4 text-sm text-[#6B7280]">
+            No SMS logged yet for this booking.
+          </p>
+        ) : (
+          <ul className="mt-4 divide-y divide-slate-100">
+            {booking.sms_logs.map((log) => (
+              <li key={log.id} className="py-3 first:pt-0">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-[#111827]">
+                      Pickup reminder
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#6B7280]">{log.phone_to}</p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                      log.status === "sent"
+                        ? "bg-emerald-50 text-emerald-800"
+                        : "bg-red-50 text-red-800"
+                    }`}
+                  >
+                    {log.status}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-[#9CA3AF]">
+                  Sent {formatWhen(log.created_at)}
+                  {log.twilio_sid ? ` · ${log.twilio_sid}` : ""}
                 </p>
                 {log.error_message ? (
                   <p className="mt-1 text-xs text-red-600">{log.error_message}</p>

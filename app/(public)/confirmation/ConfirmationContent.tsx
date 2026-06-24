@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/Button";
@@ -83,6 +83,7 @@ export default function ConfirmationContent() {
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimSuccess, setClaimSuccess] = useState(false);
+  const confirmationEmailAttemptedRef = useRef(false);
   const confirmationSnapshot = useMemo(() => loadConfirmationSnapshot(), []);
 
   const {
@@ -132,6 +133,25 @@ export default function ConfirmationContent() {
   useEffect(() => {
     void fetchBooking();
   }, [fetchBooking]);
+
+  useEffect(() => {
+    if (loadState !== "ready" || !booking || confirmationEmailAttemptedRef.current) {
+      return;
+    }
+    confirmationEmailAttemptedRef.current = true;
+
+    const email = (guestEmail || booking.customer_email).trim();
+    void fetch("/api/bookings/send-confirmation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reference: booking.reference,
+        email: email || undefined,
+      }),
+    }).catch((err) => {
+      console.error("auto send confirmation email:", err);
+    });
+  }, [loadState, booking, guestEmail]);
 
   useEffect(() => {
     const supabase = createClient();

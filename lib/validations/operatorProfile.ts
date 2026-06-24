@@ -1,13 +1,12 @@
 import { z } from "zod";
+import { OPERATOR_FLEET_VEHICLE_TYPES } from "@/lib/operator/fleet-vehicle-types";
 import { isUkPhoneNumber } from "./auth";
 
-const vehicleTypeEnum = z.enum([
-  "Sedan",
-  "SUV",
-  "Luxury",
-  "Van",
-  "Executive",
-]);
+const fleetVehicleTypeEnum = z.enum(OPERATOR_FLEET_VEHICLE_TYPES);
+
+export const fleetVehicleTypesFieldSchema = z
+  .array(fleetVehicleTypeEnum)
+  .min(1, "Select at least one vehicle type");
 
 function isFutureCalendarDate(value: string): boolean {
   const parsed = new Date(value);
@@ -22,13 +21,7 @@ function isFutureCalendarDate(value: string): boolean {
   return expiry > today;
 }
 
-export const operatorProfileVehicleTypes = [
-  "Sedan",
-  "SUV",
-  "Luxury",
-  "Van",
-  "Executive",
-] as const;
+export const operatorProfileVehicleTypes = OPERATOR_FLEET_VEHICLE_TYPES;
 
 export const operatorProfileFormSchema = z.object({
   business_name: z.string().min(2, "Business name is required"),
@@ -57,7 +50,7 @@ export const operatorProfileFormSchema = z.object({
     .max(5000, "Description is too long")
     .default("")
     .transform((s) => s.trim()),
-  vehicle_type: vehicleTypeEnum,
+  fleet_vehicle_types: fleetVehicleTypesFieldSchema,
   license_number: z.string().min(3, "License number must be at least 3 characters"),
   license_expiry: z
     .string()

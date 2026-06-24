@@ -1,13 +1,6 @@
 import { z } from "zod";
+import { fleetVehicleTypesFieldSchema } from "@/lib/validations/operatorProfile";
 import { signUpSchema } from "./auth";
-
-const vehicleTypeEnum = z.enum([
-  "Sedan",
-  "SUV",
-  "Luxury",
-  "Van",
-  "Executive",
-]);
 
 function isFutureCalendarDate(value: string): boolean {
   const parsed = new Date(value);
@@ -41,13 +34,11 @@ export const operatorOnboardingSchema = z.object({
     .refine(
       (value) => {
         const compact = value.replace(/[\s-()]/g, "");
-        // Accept E.164 (+447700900000) or plain digits with country code omitted.
-        // Keep it permissive: 8–15 digits, optional leading +.
         return /^\+?[1-9]\d{7,14}$/.test(compact);
       },
       "Enter a valid phone number (include country code if possible)",
     ),
-  vehicle_type: vehicleTypeEnum,
+  fleet_vehicle_types: fleetVehicleTypesFieldSchema,
   vehicle_registration: z
     .string()
     .min(2)
@@ -77,7 +68,7 @@ export const operatorOnboardingSchema = z.object({
 /** Operator business details submitted after account creation (server-validated). */
 export const operatorApplicationSchema = operatorOnboardingSchema.pick({
   business_name: true,
-  vehicle_type: true,
+  fleet_vehicle_types: true,
   vehicle_registration: true,
   license_number: true,
   license_expiry: true,

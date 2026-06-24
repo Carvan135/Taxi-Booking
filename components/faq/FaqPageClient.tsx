@@ -3,6 +3,7 @@
 import { ChevronDown, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { OpenTawkChatButton } from "@/components/chat/OpenTawkChatButton";
+import { PolicyPdfDownload } from "@/components/legal/PolicyPdfDownload";
 import { SITE_EMAILS } from "@/lib/site/contact";
 
 type FaqItem = {
@@ -24,18 +25,27 @@ const FAQ_DATA: FaqCategory[] = [
     items: [
       {
         id: "booking-1",
-        question: "How do I book a ride?",
-        answer: "[CONTENT]",
+        question: "How do I book a taxi?",
+        answer:
+          "Simply fill out the booking form with your pickup location, destination, date, and time. You'll then see a list of available operators to choose from. Select your preferred operator and complete the payment to confirm your booking.",
       },
       {
         id: "booking-2",
-        question: "Can I book a return trip?",
-        answer: "[CONTENT]",
+        question: "What if I need to book for multiple passengers?",
+        answer:
+          "During the booking process, you can specify the number of passengers. We'll show you operators with vehicles that can accommodate your group size.",
       },
       {
         id: "booking-3",
-        question: "Can I book for someone else?",
-        answer: "[CONTENT]",
+        question: "Can I request a specific type of vehicle?",
+        answer:
+          "Yes, when browsing available operators, you'll see their vehicle types (sedan, SUV, luxury, etc.). You can filter and choose based on your preference.",
+      },
+      {
+        id: "booking-4",
+        question: "Are the prices fixed or estimated?",
+        answer:
+          "The prices shown are fixed quotes based on your journey details. The final price won't change unless you modify the pickup or destination during the trip.",
       },
     ],
   },
@@ -45,18 +55,27 @@ const FAQ_DATA: FaqCategory[] = [
     items: [
       {
         id: "payment-1",
-        question: "How do I pay for my booking?",
-        answer: "[CONTENT]",
+        question: "What payment methods do you accept?",
+        answer:
+          "We accept all major credit and debit cards through our secure Stripe Connect payment system. Payment is processed at the time of booking.",
+      },
+    ],
+  },
+  {
+    id: "cancellations",
+    label: "Cancellations & changes",
+    items: [
+      {
+        id: "cancellations-1",
+        question: "Can I cancel or modify my booking?",
+        answer:
+          "Yes, you can cancel or modify your booking up to 2 hours before the scheduled pickup time. Go to 'My Bookings' and select the booking you want to change. Cancellations made less than 2 hours before pickup may incur a cancellation fee.",
       },
       {
-        id: "payment-2",
-        question: "When am I charged?",
-        answer: "[CONTENT]",
-      },
-      {
-        id: "payment-3",
-        question: "Is my payment secure?",
-        answer: "[CONTENT]",
+        id: "cancellations-2",
+        question: "What happens if my driver is late?",
+        answer:
+          "If your driver is running late, they'll contact you directly. If they're more than 15 minutes late without notification, you can cancel the booking without penalty and receive a full refund.",
       },
     ],
   },
@@ -67,59 +86,20 @@ const FAQ_DATA: FaqCategory[] = [
       {
         id: "operators-1",
         question: "How are operators verified?",
-        answer: "[CONTENT]",
+        answer:
+          "All operators on our platform undergo thorough background checks, vehicle inspections, and license verification. We also collect customer ratings and reviews to ensure quality service.",
       },
       {
         id: "operators-2",
-        question: "Can I choose my operator?",
-        answer: "[CONTENT]",
+        question: "How do I know my driver has arrived?",
+        answer:
+          "You'll receive a notification when your driver is nearby. The driver will also contact you directly using the phone number you provided during booking.",
       },
       {
         id: "operators-3",
-        question: "What if my operator is late?",
-        answer: "[CONTENT]",
-      },
-    ],
-  },
-  {
-    id: "account",
-    label: "Account",
-    items: [
-      {
-        id: "account-1",
-        question: "Do I need an account to book?",
-        answer: "[CONTENT]",
-      },
-      {
-        id: "account-2",
-        question: "How do I reset my password?",
-        answer: "[CONTENT]",
-      },
-      {
-        id: "account-3",
-        question: "Where can I view my bookings?",
-        answer: "[CONTENT]",
-      },
-    ],
-  },
-  {
-    id: "refunds",
-    label: "Refunds",
-    items: [
-      {
-        id: "refunds-1",
-        question: "When can I cancel for a full refund?",
-        answer: "[CONTENT]",
-      },
-      {
-        id: "refunds-2",
-        question: "How long do refunds take?",
-        answer: "[CONTENT]",
-      },
-      {
-        id: "refunds-3",
-        question: "What if I cancel inside the cutoff window?",
-        answer: "[CONTENT]",
+        question: "How do I become an operator on the platform?",
+        answer:
+          "Visit our Operator Registration page to apply. You'll need to provide your business details, vehicle information, insurance documents, and driver licenses. Our team will review your application within 3–5 business days.",
       },
     ],
   },
@@ -130,7 +110,13 @@ function matchesQuery(item: FaqItem, query: string): boolean {
   return haystack.includes(query);
 }
 
-export function FaqPageClient({ cutoffHours }: { cutoffHours: number }) {
+export function FaqPageClient({
+  cutoffHours,
+  pdfUrl,
+}: {
+  cutoffHours: number;
+  pdfUrl: string | null;
+}) {
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -159,6 +145,9 @@ export function FaqPageClient({ cutoffHours }: { cutoffHours: number }) {
           Search for answers about booking, payments, cancellations, and your
           account on AirportHub.
         </p>
+        <div className="mt-5 flex justify-center">
+          <PolicyPdfDownload url={pdfUrl} />
+        </div>
       </header>
 
       <div className="relative mt-8">

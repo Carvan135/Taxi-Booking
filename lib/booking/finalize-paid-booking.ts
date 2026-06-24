@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { createBookingBodySchema } from "@/lib/booking/api-schemas";
+import { emitBookingCreatedEmails } from "@/lib/email/booking-events";
 import {
   insertPendingBookings,
   pendingBookingSuccessPayload,
@@ -35,7 +36,11 @@ export async function finalizePaidBooking(
   supabase: SupabaseClient,
   body: CreateBookingBody,
   paymentIntent: Stripe.PaymentIntent,
-  options?: { sendNotifications?: boolean },
+  options?: {
+    sendNotifications?: boolean;
+    /** Customer + operator confirmation emails (idempotent via email_logs). */
+    sendConfirmationEmail?: boolean;
+  },
 ): Promise<FinalizePaidBookingResult> {
   if (paymentIntent.status === "canceled") {
     return {
@@ -98,9 +103,22 @@ export async function finalizePaidBooking(
     };
   }
 
+  const payload = pendingBookingSuccessPayload(rows);
+
+  if (
+    paymentIntent.status === "succeeded" &&
+    (options?.sendConfirmationEmail ?? true)
+  ) {
+    try {
+      await emitBookingCreatedEmails(supabase, payload.booking_reference);
+    } catch (err) {
+      console.error("booking confirmation email error:", err);
+    }
+  }
+
   return {
     ok: true,
-    payload: pendingBookingSuccessPayload(rows),
+    payload,
     rows,
     alreadyConfirmed: !sync.updated && !sync.error,
   };

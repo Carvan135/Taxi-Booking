@@ -97,6 +97,27 @@ export async function getPartialRefundEnabled(
   return value === "true";
 }
 
+const DEFAULT_SMS_REMINDER_HOURS = 2;
+
+export async function getSmsRemindersEnabled(
+  client?: SupabaseClient,
+): Promise<boolean> {
+  const value = await getSettingValue("sms_reminders_enabled", client);
+  if (value === undefined || value === null) return true;
+  return value === "true";
+}
+
+export async function getSmsReminderHoursBefore(
+  client?: SupabaseClient,
+): Promise<number> {
+  const value = await getSettingValue("sms_reminder_hours_before", client);
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 24) {
+    return DEFAULT_SMS_REMINDER_HOURS;
+  }
+  return Math.round(parsed);
+}
+
 export type CancellationPolicySettings = {
   cutoffHours: number;
   fullRefundHours: number;

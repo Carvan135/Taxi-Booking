@@ -33,6 +33,7 @@ function isPublicPath(pathname: string): boolean {
     "/faq",
     "/privacy",
     "/terms",
+    "/cookies",
     "/reset-password",
     "/auth/reset-password",
     "/auth/callback",

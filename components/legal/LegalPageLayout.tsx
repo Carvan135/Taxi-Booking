@@ -10,6 +10,7 @@ type LegalPageLayoutProps = {
   lastUpdated: string;
   intro?: string;
   sections: LegalTocItem[];
+  headerAction?: ReactNode;
   children: ReactNode;
 };
 
@@ -18,6 +19,7 @@ export function LegalPageLayout({
   lastUpdated,
   intro,
   sections,
+  headerAction,
   children,
 }: LegalPageLayoutProps) {
   return (
@@ -58,6 +60,9 @@ export function LegalPageLayout({
               <p className="mt-4 max-w-3xl text-base leading-relaxed text-content/80">
                 {intro}
               </p>
+            ) : null}
+            {headerAction ? (
+              <div className="mt-5">{headerAction}</div>
             ) : null}
           </header>
 

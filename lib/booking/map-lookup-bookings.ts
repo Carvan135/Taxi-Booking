@@ -104,6 +104,8 @@ export function mapLookupResponseToBookings(
       cancellation_reason: null,
       cancelled_at: null,
       cancelled_by: null,
+      sms_reminder_sent_at: null,
+      customer_phone_verified: false,
       created_at: leg.created_at ?? new Date().toISOString(),
       updated_at: leg.created_at ?? new Date().toISOString(),
       operators: op

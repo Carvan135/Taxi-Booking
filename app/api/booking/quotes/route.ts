@@ -6,17 +6,10 @@ import {
   type QuoteRequestTrip,
 } from "@/lib/booking/quote-server";
 import { getCommissionPercentage } from "@/lib/booking/platform-settings-server";
+import { operatorMatchesServiceType } from "@/lib/operator/fleet-vehicle-types";
 import { OPERATOR_STATUS } from "@/lib/validations/enums";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import type { ServiceType } from "@/lib/validations/enums";
-import type { VehicleType } from "@/types";
-
-const SERVICE_TYPE_TO_VEHICLE_TYPE: Record<ServiceType, VehicleType> = {
-  standard: "Sedan",
-  executive: "Executive",
-  van: "Van",
-  suv: "SUV",
-};
 
 export const dynamic = "force-dynamic";
 
@@ -48,18 +41,11 @@ export async function POST(req: Request) {
 
     let query = supabase
       .from("operators")
-      .select("id")
+      .select("id, vehicle_type, fleet_vehicle_types")
       .eq("status", OPERATOR_STATUS.approved)
       .eq("is_paused", false);
 
-    if (service_type) {
-      query = query.eq(
-        "vehicle_type",
-        SERVICE_TYPE_TO_VEHICLE_TYPE[service_type],
-      );
-    }
-
-    const { data: operators, error } = await query;
+    const { data: operatorRows, error } = await query;
     if (error) {
       console.error("booking/quotes operators query:", error);
       return NextResponse.json(
@@ -77,6 +63,12 @@ export async function POST(req: Request) {
         { status: 500 },
       );
     }
+
+    const operators = (operatorRows ?? []).filter((op) =>
+      service_type
+        ? operatorMatchesServiceType(op, service_type as ServiceType)
+        : true,
+    );
 
     const quotes: Record<
       string,

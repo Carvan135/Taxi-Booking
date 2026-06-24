@@ -4,10 +4,7 @@ import {
   syncBookingsFromPaymentIntent,
   syncBookingsPaymentFailed,
 } from "@/lib/stripe/sync-booking-payment";
-import {
-  fireBookingEmail,
-  emitBookingConfirmationSafetyNet,
-} from "@/lib/email/booking-events";
+import { emitBookingConfirmationSafetyNet } from "@/lib/email/booking-events";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -88,9 +85,11 @@ export async function POST(req: Request) {
             sync.error,
           );
         } else {
-          fireBookingEmail(() =>
-            emitBookingConfirmationSafetyNet(supabase, intent.id),
-          );
+          try {
+            await emitBookingConfirmationSafetyNet(supabase, intent.id);
+          } catch (emailErr) {
+            console.error("confirmation email safety net error:", emailErr);
+          }
         }
         break;
       }

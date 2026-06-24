@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, PoundSterling } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { BasePricingModal } from "@/components/operator/BasePricingModal";
 import { PredefinedPriceRuleModal } from "@/components/operator/PredefinedPriceRuleModal";
@@ -18,16 +18,8 @@ import {
   useUpdatePriceRule,
 } from "@/hooks/queries";
 import type { BasePricingFormData, PredefinedPriceRuleFormData } from "@/lib/validations";
-import { PLACEHOLDER } from "@/lib/format/display";
+import { formatGbp } from "@/lib/format/money";
 import type { PriceRule } from "@/types";
-
-function formatGbp(amount: number | undefined): string {
-  if (amount == null || Number.isNaN(amount)) return PLACEHOLDER;
-  return `£${Number(amount).toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 function ruleValueLabel(rule: PriceRule): string {
   if (rule.rule_type === RULE_TYPE.multiplier) {
@@ -181,7 +173,7 @@ export function PriceRulesPage() {
                         {template.description}
                       </p>
                       <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-content">
-                        <DollarSign
+                        <PoundSterling
                           className="h-4 w-4 text-content/40"
                           aria-hidden
                         />

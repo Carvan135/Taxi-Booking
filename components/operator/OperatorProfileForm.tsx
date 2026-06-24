@@ -11,22 +11,19 @@ import {
   Star,
 } from "lucide-react";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import { OperatorAvailabilityToggle } from "@/components/operator/OperatorAvailabilityToggle";
+import { VehicleTypeMultiSelect } from "@/components/operator/VehicleTypeMultiSelect";
 import { Button } from "@/components/ui/Button";
 import { updateOperatorProfile } from "@/lib/actions/operatorProfile";
 import {
   operatorProfileFormSchema,
-  operatorProfileVehicleTypes,
   type OperatorProfileFormValues,
 } from "@/lib/validations/operatorProfile";
 
 const inputIcon =
   "pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-content/45";
-
-const selectClassName =
-  "w-full rounded-lg border border-gray-300 bg-slate-50 px-3 py-1.5 text-sm text-content shadow-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-blue-500/35";
 
 const inputIconClass =
   "w-full rounded-lg border border-gray-300 bg-slate-50 py-1.5 pl-8 pr-3 text-sm text-content shadow-sm placeholder:text-slate-400 focus:border-secondary focus:outline-none focus:ring-1 focus:ring-blue-500/35";
@@ -59,12 +56,13 @@ export function OperatorProfileForm({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [savedOk, setSavedOk] = useState(false);
 
-  const vehicleTypeErrorId = "profile-vehicle_type-error";
+  const fleetVehicleTypesErrorId = "profile-fleet_vehicle_types-error";
   const licenseNumberErrorId = "profile-license_number-error";
   const licenseExpiryErrorId = "profile-license_expiry-error";
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting, isDirty },
@@ -313,39 +311,21 @@ export function OperatorProfileForm({
               <h3 className="text-sm font-semibold text-primary">
                 Fleet &amp; license
               </h3>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <div className="w-full">
-                  <label
-                    htmlFor="vehicle_type"
-                    className="mb-1 block text-xs font-medium text-content"
-                  >
-                    Vehicle type
-                  </label>
-                  <select
-                    id="vehicle_type"
-                    className={selectClassName}
-                    {...register("vehicle_type")}
-                    aria-invalid={errors.vehicle_type ? "true" : "false"}
-                    aria-describedby={
-                      errors.vehicle_type ? vehicleTypeErrorId : undefined
-                    }
-                  >
-                    {operatorProfileVehicleTypes.map((v) => (
-                      <option key={v} value={v}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.vehicle_type?.message ? (
-                    <p
-                      id={vehicleTypeErrorId}
-                      className="mt-1.5 text-sm text-red-600"
-                      role="alert"
-                    >
-                      {errors.vehicle_type.message}
-                    </p>
-                  ) : null}
-                </div>
+              <div className="mt-5 space-y-4">
+                <Controller
+                  name="fleet_vehicle_types"
+                  control={control}
+                  render={({ field }) => (
+                    <VehicleTypeMultiSelect
+                      id="profile-fleet_vehicle_types"
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      error={errors.fleet_vehicle_types?.message}
+                      errorId={fleetVehicleTypesErrorId}
+                    />
+                  )}
+                />
+                <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label
                     htmlFor="fleet_vehicle_count"
@@ -421,6 +401,7 @@ export function OperatorProfileForm({
                     </p>
                   ) : null}
                 </div>
+              </div>
               </div>
             </section>
 

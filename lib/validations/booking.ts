@@ -237,6 +237,12 @@ export const platformSettingsSchema = z.object({
     .min(1, "Must be at least 1 hour")
     .max(168, "Cannot exceed 168 hours"),
   partial_refund_enabled: z.boolean(),
+  sms_reminder_hours_before: z.coerce
+    .number()
+    .int()
+    .min(1, "Must be at least 1 hour")
+    .max(24, "Cannot exceed 24 hours"),
+  sms_reminders_enabled: z.boolean(),
 });
 
 export type OneWayBookingFormData = z.infer<typeof oneWayBookingSchema>;
@@ -278,6 +284,11 @@ export const cancellationSettingsSchema = platformSettingsSchema.pick({
   partial_refund_enabled: true,
 });
 
+export const smsSettingsSchema = platformSettingsSchema.pick({
+  sms_reminder_hours_before: true,
+  sms_reminders_enabled: true,
+});
+
 export type CompletionSettingsFormData = z.infer<typeof completionSettingsSchema>;
 export type CompletionSettingsFormInput = z.input<typeof completionSettingsSchema>;
 
@@ -291,3 +302,6 @@ export type CancellationSettingsFormData = z.infer<
 export type CancellationSettingsFormInput = z.input<
   typeof cancellationSettingsSchema
 >;
+
+export type SmsSettingsFormData = z.infer<typeof smsSettingsSchema>;
+export type SmsSettingsFormInput = z.input<typeof smsSettingsSchema>;

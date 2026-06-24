@@ -21,6 +21,7 @@ import {
   patchTaxibookBooking,
   type TaxibookBookingSession,
 } from "@/lib/booking/session";
+import { formatFleetVehicleTypesDisplay } from "@/lib/operator/fleet-vehicle-types";
 import type { OperatorListItem } from "@/types";
 
 const SERVICE_LABELS: Record<TaxibookBookingSession["service_type"], string> = {
@@ -366,7 +367,7 @@ function OperatorCard({
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-content/70">
             <span className="inline-flex items-center gap-1.5">
               <Car className="h-4 w-4 shrink-0 text-secondary" aria-hidden />
-              {operator.vehicle_type}
+              {formatFleetVehicleTypesDisplay(operator)}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Clock className="h-4 w-4 shrink-0 text-secondary" aria-hidden />

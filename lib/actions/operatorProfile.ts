@@ -1,6 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  primaryFleetVehicleType,
+  serializeFleetVehicleTypes,
+} from "@/lib/operator/fleet-vehicle-types";
 import { operatorProfileFormSchema } from "@/lib/validations/operatorProfile";
 import { formatZodError } from "@/lib/validations/utils";
 import { createClient } from "@/lib/supabase/server";
@@ -64,7 +68,8 @@ export async function updateOperatorProfile(
     .update({
       business_name: data.business_name.trim(),
       vehicle_registration: data.vehicle_registration,
-      vehicle_type: data.vehicle_type,
+      vehicle_type: primaryFleetVehicleType(data.fleet_vehicle_types),
+      fleet_vehicle_types: serializeFleetVehicleTypes(data.fleet_vehicle_types),
       license_number: data.license_number.trim(),
       license_expiry: data.license_expiry,
       business_address: data.business_address || null,

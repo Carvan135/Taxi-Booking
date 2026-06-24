@@ -1,7 +1,7 @@
 import { PRICE_RULE_TEMPLATES } from "@/lib/booking/price-rule-catalog";
+import { resolveOperatorFleetTypes } from "@/lib/operator/fleet-vehicle-types";
 import {
   operatorProfileFormSchema,
-  operatorProfileVehicleTypes,
   type OperatorProfileFormValues,
 } from "@/lib/validations/operatorProfile";
 import type { OperatorStatus } from "@/types";
@@ -21,22 +21,20 @@ export type OperatorSetupEvaluation = {
 
 type OperatorRow = Record<string, unknown>;
 
-function parseVehicleType(
-  raw: unknown,
-): OperatorProfileFormValues["vehicle_type"] {
-  const v = String(raw ?? "Sedan");
-  return operatorProfileVehicleTypes.includes(
-    v as (typeof operatorProfileVehicleTypes)[number],
-  )
-    ? (v as OperatorProfileFormValues["vehicle_type"])
-    : "Sedan";
-}
-
 export function isOperatorProfileComplete(
   operator: OperatorRow | null,
   profile: { email: string | null; phone: string | null } | null,
 ): boolean {
   if (!operator) return false;
+
+  const fleetTypes = resolveOperatorFleetTypes({
+    fleet_vehicle_types:
+      operator.fleet_vehicle_types == null
+        ? null
+        : String(operator.fleet_vehicle_types),
+    vehicle_type:
+      operator.vehicle_type == null ? null : String(operator.vehicle_type),
+  });
 
   const values: OperatorProfileFormValues = {
     business_name: String(operator.business_name ?? ""),
@@ -51,7 +49,7 @@ export function isOperatorProfileComplete(
       operator.business_description == null
         ? ""
         : String(operator.business_description),
-    vehicle_type: parseVehicleType(operator.vehicle_type),
+    fleet_vehicle_types: fleetTypes,
     license_number: String(operator.license_number ?? ""),
     license_expiry: String(operator.license_expiry ?? "").slice(0, 10),
     fleet_vehicle_count:

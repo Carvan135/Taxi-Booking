@@ -1,5 +1,6 @@
 import { Car } from "lucide-react";
 import Link from "next/link";
+import { CookieSettingsButton } from "@/components/cookies/CookieSettingsButton";
 import { SITE_EMAILS } from "@/lib/site/contact";
 
 const SITE_DOMAIN = "airporthub.co.uk";
@@ -18,6 +19,7 @@ const operatorLinks = [
 const legalLinks = [
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms of Service" },
+  { href: "/cookies", label: "Cookie Policy" },
   { href: "/faq", label: "FAQ" },
 ] as const;
 
@@ -125,6 +127,9 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <CookieSettingsButton />
+              </li>
             </ul>
           </div>
         </div>

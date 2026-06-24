@@ -77,6 +77,27 @@ export function useResendConfirmationMutation() {
   });
 }
 
+export function useResendSmsReminderMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (bookingId: string) => {
+      const res = await fetch(
+        `/api/admin/bookings/${bookingId}/resend-sms-reminder`,
+        { method: "POST" },
+      );
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        throw new Error(body.error ?? "Could not resend SMS reminder");
+      }
+      return body;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: adminBookingKeys.all });
+    },
+  });
+}
+
 export function useReleasePayoutMutation() {
   const queryClient = useQueryClient();
 
