@@ -62,10 +62,28 @@ After deploy, check `GET /api/health` — `geoapifyConfigured` must be `true`. I
 |----------|----------------|-------|
 | `STRIPE_SECRET_KEY` | Runtime secret | Server-side PaymentIntent creation |
 | `STRIPE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | **Build** variable (recommended) + runtime | Publishable key for Stripe.js. On Workers, runtime-only `NEXT_PUBLIC_*` is **not** inlined into the client bundle — set it as a **Build** variable, or rely on `publishable_key` returned by `POST /api/stripe/payment-intent` after deploy. |
-| `STRIPE_WEBHOOK_SECRET` | Runtime secret | Webhook signature verification |
+| `STRIPE_WEBHOOK_SECRET` | Runtime secret | Signing secret for **platform** webhook (Events from: **Your account**) |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | Runtime secret | Signing secret for **Connect** webhook (Events from: **Connected accounts**) |
+
+**Two Stripe webhooks, same URL** (`https://airporthub.co.uk/api/webhooks/stripe`):
+
+| Webhook | Events from | Subscribe to | Cloudflare secret |
+|---------|-------------|--------------|-------------------|
+| **Platform** (add new) | **Your account** | `payment_intent.succeeded`, `payment_intent.payment_failed` | `STRIPE_WEBHOOK_SECRET` |
+| **Connect** (existing e.g. whimsical-serenity) | **Connected accounts** | `account.updated` | `STRIPE_CONNECT_WEBHOOK_SECRET` |
+
+Setup (test mode until go-live):
+
+1. Stripe Dashboard → **Developers → Webhooks** (ensure **Test mode** / sandbox).
+2. **Add endpoint** → URL `https://airporthub.co.uk/api/webhooks/stripe` → **Your account** → select `payment_intent.succeeded`, `payment_intent.payment_failed` → copy signing secret → `STRIPE_WEBHOOK_SECRET`.
+3. Keep or recreate the **Connect** endpoint → same URL → **Connected accounts** → `account.updated` → copy signing secret → `STRIPE_CONNECT_WEBHOOK_SECRET`.
+4. Send a **test webhook** from each endpoint; both should return **200**.
+5. Failed deliveries with **400** mean the wrong secret is in Cloudflare for that endpoint.
+
+Note: the customer booking flow finalizes via `POST /api/bookings/create` after payment. Webhooks are a safety net (payment sync + confirmation email + operator Connect status).
 
 After deploy, verify:
 
-- `GET /api/health` includes `stripePublishableKeyConfigured: true`
+- `GET /api/health` includes `stripeWebhookSecretConfigured: true` and `stripeConnectWebhookSecretConfigured: true`
 - `POST /api/stripe/payment-intent` returns `publishable_key` and `client_secret`
 - `/payment` shows the Stripe card form (not only the page header)

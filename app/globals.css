@@ -32,3 +32,21 @@ body {
     transform: scale(1);
   }
 }
+
+/* Keep Tawk chat bubble above the cookie banner and reduce overlap clutter */
+#tawk-bubble-container,
+.tawk-min-container {
+  z-index: 80 !important;
+}
+
+body:has([aria-labelledby="cookie-banner-title"]) #tawk-bubble-container,
+body:has([aria-labelledby="cookie-banner-title"]) .tawk-min-container {
+  bottom: 6.5rem !important;
+}
+
+@media (min-width: 640px) {
+  body:has([aria-labelledby="cookie-banner-title"]) #tawk-bubble-container,
+  body:has([aria-labelledby="cookie-banner-title"]) .tawk-min-container {
+    bottom: 5.5rem !important;
+  }
+}

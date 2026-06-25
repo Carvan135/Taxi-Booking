@@ -1,17 +1,16 @@
 import Stripe from "stripe";
-import { getRuntimeEnv } from "@/lib/env/runtime";
-import { getStripeServer } from "@/lib/stripe/server";
+import { reconcilePaymentIntentById } from "@/lib/stripe/reconcile-payment-intent";
 import {
   syncBookingsFromPaymentIntent,
   syncBookingsPaymentFailed,
 } from "@/lib/stripe/sync-booking-payment";
+import { constructStripeWebhookEvent } from "@/lib/stripe/verify-webhook-event";
 import { emitBookingConfirmationSafetyNet } from "@/lib/email/booking-events";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const stripe = getStripeServer();
   const body = await req.text();
   const signature = req.headers.get("stripe-signature");
 
@@ -22,11 +21,7 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      getRuntimeEnv("STRIPE_WEBHOOK_SECRET")!,
-    );
+    event = constructStripeWebhookEvent(body, signature);
   } catch (err) {
     console.error("Webhook signature verification failed:", err);
     return new Response("Invalid signature", { status: 400 });
@@ -78,7 +73,20 @@ export async function POST(req: Request) {
         });
 
         if (!sync.updated && !sync.error) {
-          console.log("Booking not yet created for intent:", intent.id);
+          const recovered = await reconcilePaymentIntentById(
+            supabase,
+            intent.id,
+            { sendNotifications: true },
+          );
+          if (!recovered.synced && !recovered.error) {
+            console.log("Booking not yet created for intent:", intent.id);
+          }
+          if (recovered.error) {
+            console.error(
+              "payment_intent.succeeded reconcile error:",
+              recovered.error,
+            );
+          }
         }
         if (sync.error) {
           console.error(

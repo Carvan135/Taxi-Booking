@@ -20,13 +20,17 @@ export function TawkToWidget() {
   const consent = useOptionalCookieConsent();
   const isStaff =
     pathname.startsWith("/admin") || pathname.startsWith("/operator");
+  const hideOnCheckout =
+    pathname.startsWith("/payment") ||
+    pathname.startsWith("/confirmation") ||
+    pathname.startsWith("/complete-payment");
   const isReady = consent?.isReady === true;
   const hasFunctionalConsent = consent?.hasFunctionalConsent === true;
 
   useEffect(() => {
     if (!isReady) return;
 
-    if (isStaff || !hasFunctionalConsent) {
+    if (isStaff || hideOnCheckout || !hasFunctionalConsent) {
       removeTawkWidget();
       return;
     }
@@ -43,7 +47,7 @@ export function TawkToWidget() {
     return () => {
       removeTawkWidget();
     };
-  }, [hasFunctionalConsent, isReady, isStaff]);
+  }, [hasFunctionalConsent, hideOnCheckout, isReady, isStaff]);
 
   return null;
 }

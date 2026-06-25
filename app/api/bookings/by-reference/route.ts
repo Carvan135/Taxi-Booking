@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { mapOperatorJoin } from "@/lib/booking/map-customer-booking-row";
 import { OPERATOR_FOR_CUSTOMER_BOOKING_SELECT } from "@/lib/booking/operator-booking-select";
+import { reconcilePaymentIntentById } from "@/lib/stripe/reconcile-payment-intent";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ const bookingSelect = `
   price,
   status,
   payment_status,
+  stripe_payment_intent_id,
   operator_id,
   created_at,
   customer_id,
@@ -67,24 +69,42 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
+    if (
+      primary.payment_status !== "paid" &&
+      primary.stripe_payment_intent_id?.trim()
+    ) {
+      await reconcilePaymentIntentById(
+        supabase,
+        primary.stripe_payment_intent_id.trim(),
+        { sendNotifications: true },
+      );
+    }
+
+    const { data: refreshed, error: refreshError } = await supabase
+      .from("bookings")
+      .select(bookingSelect)
+      .eq("reference", ref)
+      .maybeSingle();
+
+    if (refreshError) throw refreshError;
+    const row = refreshed ?? primary;
+
     const authClient = createClient();
     const {
       data: { user },
     } = await authClient.auth.getUser();
 
     if (user) {
-      if (primary.customer_id && primary.customer_id !== user.id) {
+      if (row.customer_id && row.customer_id !== user.id) {
         return NextResponse.json({ error: "Booking not found" }, { status: 404 });
       }
-    } else if (primary.customer_id) {
+    } else if (row.customer_id) {
       return NextResponse.json(
         { error: "Sign in to view this booking" },
         { status: 403 },
       );
     } else if (email) {
-      if (
-        primary.customer_email.toLowerCase() !== email.toLowerCase()
-      ) {
+      if (row.customer_email.toLowerCase() !== email.toLowerCase()) {
         return NextResponse.json({ error: "Booking not found" }, { status: 404 });
       }
     } else {
@@ -94,13 +114,13 @@ export async function GET(req: Request) {
       );
     }
 
-    let legs = [primary];
+    let legs = [row];
 
-    if (primary.group_reference) {
+    if (row.group_reference) {
       const { data: grouped, error: groupError } = await supabase
         .from("bookings")
         .select(bookingSelect)
-        .eq("group_reference", primary.group_reference)
+        .eq("group_reference", row.group_reference)
         .order("leg", { ascending: true });
 
       if (groupError) {
@@ -112,44 +132,44 @@ export async function GET(req: Request) {
     }
 
     const total_paid = legs.reduce(
-      (sum, row) => sum + (Number(row.price) || 0),
+      (sum, legRow) => sum + (Number(legRow.price) || 0),
       0,
     );
 
     const operator = mapOperatorJoin(
-      primary.operators as Parameters<typeof mapOperatorJoin>[0],
+      row.operators as Parameters<typeof mapOperatorJoin>[0],
     );
 
     return NextResponse.json({
-      reference: primary.reference,
-      group_reference: primary.group_reference,
-      booking_type: primary.booking_type,
+      reference: row.reference,
+      group_reference: row.group_reference,
+      booking_type: row.booking_type,
       total_paid: Math.round(total_paid * 100) / 100,
-      customer_email: primary.customer_email,
-      customer_name: primary.customer_name,
-      is_guest: primary.customer_id === null,
+      customer_email: row.customer_email,
+      customer_name: row.customer_name,
+      is_guest: row.customer_id === null,
       operator,
-      legs: legs.map((row) => {
+      legs: legs.map((legRow) => {
         const legOperator = mapOperatorJoin(
-          row.operators as Parameters<typeof mapOperatorJoin>[0],
+          legRow.operators as Parameters<typeof mapOperatorJoin>[0],
         );
         return {
-          id: row.id,
-          reference: row.reference,
-          leg: row.leg,
-          pickup_address: row.pickup_address,
-          dropoff_address: row.dropoff_address,
-          pickup_date: row.pickup_date,
-          pickup_time: row.pickup_time,
-          passengers: row.passengers,
-          service_type: row.service_type,
-          price: row.price,
-          status: row.status,
-          payment_status: row.payment_status,
-          operator_id: row.operator_id,
-          created_at: row.created_at,
-          booking_type: row.booking_type,
-          group_reference: row.group_reference,
+          id: legRow.id,
+          reference: legRow.reference,
+          leg: legRow.leg,
+          pickup_address: legRow.pickup_address,
+          dropoff_address: legRow.dropoff_address,
+          pickup_date: legRow.pickup_date,
+          pickup_time: legRow.pickup_time,
+          passengers: legRow.passengers,
+          service_type: legRow.service_type,
+          price: legRow.price,
+          status: legRow.status,
+          payment_status: legRow.payment_status,
+          operator_id: legRow.operator_id,
+          created_at: legRow.created_at,
+          booking_type: legRow.booking_type,
+          group_reference: legRow.group_reference,
           operator: legOperator,
         };
       }),

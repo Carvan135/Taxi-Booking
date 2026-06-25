@@ -6,10 +6,7 @@ import {
 } from "@/lib/email/config";
 import { getRuntimeEnv } from "@/lib/env/runtime";
 import { isGeoapifyConfigured } from "@/lib/env/geoapify";
-import {
-  getStripePublishableKey,
-  isStripePublishableKeyConfigured,
-} from "@/lib/stripe/publishable-key";
+import { isStripePublishableKeyConfigured } from "@/lib/stripe/publishable-key";
 import { isSmsConfigured } from "@/lib/sms/config";
 import { hasServiceRoleConfig } from "@/lib/supabase/admin";
 import { isSupabasePublicEnvConfigured } from "@/lib/env/supabase-public";
@@ -24,6 +21,9 @@ export type HealthChecks = {
   resendApiKeyConfigured: boolean;
   resendFromEmailConfigured: boolean;
   stripePublishableKeyConfigured: boolean;
+  stripeSecretKeyConfigured: boolean;
+  stripeWebhookSecretConfigured: boolean;
+  stripeConnectWebhookSecretConfigured: boolean;
   smsConfigured: boolean;
   cronSecretConfigured: boolean;
 };
@@ -37,7 +37,6 @@ export type HealthReport = {
   uptimeSeconds: number;
   checks: HealthChecks;
   emailFrom: string | null;
-  publishableKey: string | null;
 };
 
 const APP_VERSION = process.env.npm_package_version ?? "0.1.0";
@@ -51,6 +50,11 @@ function buildChecks(): HealthChecks {
     resendApiKeyConfigured: isResendApiKeyConfigured(),
     resendFromEmailConfigured: isResendFromEmailConfigured(),
     stripePublishableKeyConfigured: isStripePublishableKeyConfigured(),
+    stripeSecretKeyConfigured: Boolean(getRuntimeEnv("STRIPE_SECRET_KEY")),
+    stripeWebhookSecretConfigured: Boolean(getRuntimeEnv("STRIPE_WEBHOOK_SECRET")),
+    stripeConnectWebhookSecretConfigured: Boolean(
+      getRuntimeEnv("STRIPE_CONNECT_WEBHOOK_SECRET"),
+    ),
     smsConfigured: isSmsConfigured(),
     cronSecretConfigured: Boolean(getRuntimeEnv("CRON_SECRET")),
   };
@@ -89,6 +93,5 @@ export function buildHealthReport(options?: { readiness?: boolean }): HealthRepo
     uptimeSeconds: Math.round(process.uptime()),
     checks,
     emailFrom: isEmailConfigured() ? getEmailFromAddress() : null,
-    publishableKey: getStripePublishableKey(),
   };
 }

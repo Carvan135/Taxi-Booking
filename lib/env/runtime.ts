@@ -22,6 +22,8 @@ function readStaticProcessEnv(name: string): string | undefined {
       return process.env.STRIPE_SECRET_KEY?.trim();
     case "STRIPE_WEBHOOK_SECRET":
       return process.env.STRIPE_WEBHOOK_SECRET?.trim();
+    case "STRIPE_CONNECT_WEBHOOK_SECRET":
+      return process.env.STRIPE_CONNECT_WEBHOOK_SECRET?.trim();
     case "SUPABASE_SERVICE_ROLE_KEY":
       return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     case "TWILIO_ACCOUNT_SID":
@@ -85,13 +87,15 @@ export type RuntimeEnvDiagnostics = {
   workerName: string;
   hint: string;
   bindingKeys: string[];
-  probes: Record<string, RuntimeEnvProbe>;
+    probes: Record<string, RuntimeEnvProbe>;
 };
 
 const DIAGNOSTIC_VARS = [
   "RESEND_API_KEY",
   "RESEND_FROM_EMAIL",
   "SUPABASE_SERVICE_ROLE_KEY",
+  "STRIPE_WEBHOOK_SECRET",
+  "STRIPE_CONNECT_WEBHOOK_SECRET",
   "CRON_SECRET",
 ] as const;
 

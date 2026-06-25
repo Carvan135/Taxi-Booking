@@ -135,41 +135,54 @@ export function PaymentCheckoutForm({
       const body = buildCreateBody(customer);
       if (!body) throw new Error("No operator selected");
 
-      const result = await finalizeBookingAfterPayment(body);
+      let lastError: string | undefined;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const result = await finalizeBookingAfterPayment(body);
 
-      if (
-        !result.ok &&
-        result.details?.code === "amount_mismatch" &&
-        onPriceMismatch
-      ) {
-        onPriceMismatch();
-        throw new Error(
-          "The price was updated. Please review the new total and pay again.",
-        );
+        if (
+          !result.ok &&
+          result.details?.code === "amount_mismatch" &&
+          onPriceMismatch
+        ) {
+          onPriceMismatch();
+          throw new Error(
+            "The price was updated. Please review the new total and pay again.",
+          );
+        }
+
+        if (result.ok) {
+          const reference = result.booking_reference ?? "";
+          if (!isAuthenticated && result.booking_id) {
+            saveTaxibookGuestSession({
+              bookingId: result.booking_id,
+              email: customer.customer_email,
+              reference,
+            });
+          }
+
+          saveConfirmationReference(reference);
+          saveConfirmationSnapshot({
+            reference,
+            total: pricing.total,
+            trip,
+          });
+          clearTaxibookBooking();
+          clearPaymentSession();
+          router.push(`/confirmation?ref=${encodeURIComponent(reference)}`);
+          return;
+        }
+
+        lastError = result.error;
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+          const recovery = await tryFinalizeFromSucceededIntent(body);
+          if (recovery.ok && recovery.booking_reference) {
+            continue;
+          }
+        }
       }
 
-      if (!result.ok) {
-        throw new Error(result.error ?? "Could not save your booking");
-      }
-
-      const reference = result.booking_reference ?? "";
-      if (!isAuthenticated && result.booking_id) {
-        saveTaxibookGuestSession({
-          bookingId: result.booking_id,
-          email: customer.customer_email,
-          reference,
-        });
-      }
-
-      saveConfirmationReference(reference);
-      saveConfirmationSnapshot({
-        reference,
-        total: pricing.total,
-        trip,
-      });
-      clearTaxibookBooking();
-      clearPaymentSession();
-      router.push(`/confirmation?ref=${encodeURIComponent(reference)}`);
+      throw new Error(lastError ?? "Could not save your booking");
     },
     [
       buildCreateBody,

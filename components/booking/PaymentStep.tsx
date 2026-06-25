@@ -58,7 +58,6 @@ export function PaymentStep() {
     Promise<Stripe | null> | null
   >(null);
 
-  console.log(isLoadingIntent, "isLoadingIntent", stripeClient, "stripeClient", clientSecret, "clientSecret");
   const { data: profile } = useProfile();
 
   useEffect(() => {

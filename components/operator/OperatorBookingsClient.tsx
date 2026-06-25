@@ -266,6 +266,18 @@ export function OperatorBookingsClient() {
     isError: boolean;
   } | null>(null);
 
+  useEffect(() => {
+    void fetch("/api/operator/reconcile-payments", { method: "POST" })
+      .then((res) => {
+        if (res.ok) {
+          void queryClient.invalidateQueries({ queryKey: bookingKeys.operator });
+        }
+      })
+      .catch(() => {
+        /* non-blocking */
+      });
+  }, [queryClient]);
+
   const sorted = useMemo(
     () => [...bookings].sort(sortBookingsForOperator),
     [bookings],
