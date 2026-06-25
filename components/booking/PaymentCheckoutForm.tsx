@@ -208,7 +208,7 @@ export function PaymentCheckoutForm({
       if (!res.ok) {
         const resBody = (await res.json()) as {
           error?: string;
-          details?: { code?: string };
+          details?: { code?: string; fieldErrors?: Record<string, string[]> };
         };
         if (resBody.details?.code === "amount_mismatch" && onPriceMismatch) {
           onPriceMismatch();
@@ -217,7 +217,17 @@ export function PaymentCheckoutForm({
           );
           return false;
         }
-        setPaymentError(resBody.error ?? "Could not save your booking details");
+        const validationHint =
+          resBody.details &&
+          "fieldErrors" in resBody.details &&
+          resBody.details.fieldErrors
+            ? Object.values(resBody.details.fieldErrors).flat().join(" ")
+            : null;
+        setPaymentError(
+          resBody.error ??
+            validationHint ??
+            "Could not save your booking details",
+        );
         return false;
       }
       return true;

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getErrorMessage } from "@/lib/api/error-message";
 import { createBookingBodySchema } from "@/lib/booking/api-schemas";
 import {
   insertPendingBookings,
@@ -21,7 +22,10 @@ export async function POST(req: Request) {
     const parsed = createBookingBodySchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid request", details: parsed.error.flatten() },
+        {
+          error: "Invalid booking details",
+          details: parsed.error.flatten(),
+        },
         { status: 400 },
       );
     }
@@ -88,8 +92,9 @@ export async function POST(req: Request) {
     return NextResponse.json(pendingBookingSuccessPayload(rows));
   } catch (err) {
     console.error("bookings/draft error:", err);
-    const message =
-      err instanceof Error ? err.message : "Could not save booking draft";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: getErrorMessage(err, "Could not save booking draft") },
+      { status: 500 },
+    );
   }
 }
