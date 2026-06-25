@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { getRuntimeEnv } from "@/lib/env/runtime";
 import { getStripeServer } from "@/lib/stripe/server";
 import {
   syncBookingsFromPaymentIntent,
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!,
+      getRuntimeEnv("STRIPE_WEBHOOK_SECRET")!,
     );
   } catch (err) {
     console.error("Webhook signature verification failed:", err);

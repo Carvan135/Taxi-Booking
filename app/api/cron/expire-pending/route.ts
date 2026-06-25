@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { runExpirePendingBookingsCron } from "@/lib/cron/expire-pending-job";
+import { getRuntimeEnv } from "@/lib/env/runtime";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 function authorizeCron(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
+  const secret = getRuntimeEnv("CRON_SECRET");
   if (!secret) return true;
   const auth = req.headers.get("authorization");
   return auth === `Bearer ${secret}`;

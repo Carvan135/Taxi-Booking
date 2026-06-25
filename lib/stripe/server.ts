@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { getRuntimeEnv } from "@/lib/env/runtime";
 
 let stripeSingleton: Stripe | undefined;
 
@@ -7,7 +8,7 @@ let stripeSingleton: Stripe | undefined;
  * Lazy-init avoids build-time failures when env vars are empty.
  */
 export function getStripeServer(): Stripe {
-  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+  const secretKey = getRuntimeEnv("STRIPE_SECRET_KEY");
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY is not configured.");
   }

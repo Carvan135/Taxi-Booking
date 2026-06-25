@@ -4,6 +4,7 @@ import {
   isResendApiKeyConfigured,
   isResendFromEmailConfigured,
 } from "@/lib/email/config";
+import { getRuntimeEnv } from "@/lib/env/runtime";
 import { isGeoapifyConfigured } from "@/lib/env/geoapify";
 import {
   getStripePublishableKey,
@@ -51,7 +52,7 @@ function buildChecks(): HealthChecks {
     resendFromEmailConfigured: isResendFromEmailConfigured(),
     stripePublishableKeyConfigured: isStripePublishableKeyConfigured(),
     smsConfigured: isSmsConfigured(),
-    cronSecretConfigured: Boolean(process.env.CRON_SECRET?.trim()),
+    cronSecretConfigured: Boolean(getRuntimeEnv("CRON_SECRET")),
   };
 }
 

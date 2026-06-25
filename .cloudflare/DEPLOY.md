@@ -11,14 +11,26 @@ Do **not** use `npx wrangler deploy` alone unless `pages:build` has already run 
 
 ## Runtime (must match `wrangler.jsonc`)
 
-- **Compatibility date:** `2024-09-23` or later (required for Node.js built-ins during deploy)
+- **Compatibility date:** `2025-04-01` or later (required so Worker secrets populate `process.env`, and for Node.js built-ins during deploy)
 - **Compatibility flags:** `nodejs_compat`
 
-In the Cloudflare dashboard → **Settings → Runtime**, either sync from the repo or set the same values. If the dashboard shows an older date (e.g. May 2024), deploy will fail with `Could not resolve "fs"` / `async_hooks` errors.
+In the Cloudflare dashboard → **Settings → Runtime**, either sync from the repo or set the same values. If the dashboard shows an older date (e.g. `2024-09-23`), runtime secrets such as `RESEND_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` will not be visible to API routes even when set in the dashboard.
 
 ## Environment variables
 
-Set production values in **Variables and secrets**. `NEXT_PUBLIC_APP_URL` must be your Workers URL, not `http://localhost:3000`.
+Set **runtime** production values in **Variables and secrets** (Production). `NEXT_PUBLIC_*` keys used in the client bundle should also be set under **Build variables and secrets** when using Workers Builds.
+
+`NEXT_PUBLIC_APP_URL` must be your Workers URL, not `http://localhost:3000`.
+
+### Resend (transactional email)
+
+| Variable | Type | Notes |
+|----------|------|--------|
+| `RESEND_API_KEY` | Runtime **secret** | Exact name — from [resend.com](https://resend.com) |
+| `RESEND_FROM_EMAIL` | Runtime variable | e.g. `noreply@airporthub.co.uk` (verified domain) |
+| `RESEND_FROM_NAME` | Runtime variable | e.g. `AirportHub` |
+
+After deploy, `GET /api/health` should show `resendApiKeyConfigured: true`, `resendFromEmailConfigured: true`, and `emailConfigured: true`.
 
 Required for address autocomplete / geocoding:
 

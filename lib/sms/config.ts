@@ -1,16 +1,15 @@
+import { getRuntimeEnv } from "@/lib/env/runtime";
+
 export function getTwilioAccountSid(): string | null {
-  const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
-  return sid || null;
+  return getRuntimeEnv("TWILIO_ACCOUNT_SID") ?? null;
 }
 
 export function getTwilioAuthToken(): string | null {
-  const token = process.env.TWILIO_AUTH_TOKEN?.trim();
-  return token || null;
+  return getRuntimeEnv("TWILIO_AUTH_TOKEN") ?? null;
 }
 
 export function getTwilioPhoneNumber(): string | null {
-  const phone = process.env.TWILIO_PHONE_NUMBER?.trim();
-  return phone || null;
+  return getRuntimeEnv("TWILIO_PHONE_NUMBER") ?? null;
 }
 
 export function isSmsConfigured(): boolean {
