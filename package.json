@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "pages:build": "npx @opennextjs/cloudflare build",
     "preview": "npx @opennextjs/cloudflare preview",
-    "cf:deploy": "npx @opennextjs/cloudflare deploy",
+    "cf:deploy": "npx @opennextjs/cloudflare deploy -- --keep-vars",
     "cf:build-and-deploy": "npm run pages:build && npm run cf:deploy"
   },
   "dependencies": {

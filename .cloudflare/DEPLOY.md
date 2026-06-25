@@ -12,15 +12,31 @@ Do **not** use `npx wrangler deploy` alone unless `pages:build` has already run 
 ## Runtime (must match `wrangler.jsonc`)
 
 - **Compatibility date:** `2025-04-01` or later (required so Worker secrets populate `process.env`, and for Node.js built-ins during deploy)
-- **Compatibility flags:** `nodejs_compat`
+- **Compatibility flags:** `nodejs_compat`, `nodejs_compat_populate_process_env`
 
 In the Cloudflare dashboard → **Settings → Runtime**, either sync from the repo or set the same values. If the dashboard shows an older date (e.g. `2024-09-23`), runtime secrets such as `RESEND_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` will not be visible to API routes even when set in the dashboard.
 
-## Environment variables
+## Environment variables — two places (Workers Builds)
 
-Set **runtime** production values in **Variables and secrets** (Production). `NEXT_PUBLIC_*` keys used in the client bundle should also be set under **Build variables and secrets** when using Workers Builds.
+With **Workers Builds** (Git deploy), Cloudflare has **two separate** env screens. Both are required.
 
-`NEXT_PUBLIC_APP_URL` must be your Workers URL, not `http://localhost:3000`.
+| Where | Path in dashboard | Used for |
+|--------|-------------------|----------|
+| **Build** | Workers Builds → your build → **Build variables and secrets** | `NEXT_PUBLIC_*` inlined into the client bundle during `npm run pages:build` |
+| **Runtime** | Workers & Pages → **taxi-booking** → **Settings → Variables and secrets** → **Production** | API routes (`/api/*`), email, Stripe server, Twilio, cron |
+
+**Common mistake:** adding `RESEND_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, etc. only under **Workers Builds → Environment variables**. Those are **not** available to `/api/health` or other API routes at runtime.
+
+After deploy, `GET /api/health` includes a `runtime` object:
+
+- `bindingKeys` — Worker bindings visible to the app (should list your secret names if runtime vars are set)
+- `probes` — booleans showing whether each var is visible via `process.env` or Cloudflare bindings
+
+If `checks.resendApiKeyConfigured` is `false` but vars appear in the Builds env table, add them again under **Worker → Settings → Variables and secrets (Production)** and redeploy.
+
+Use `npm run cf:deploy` (includes `--keep-vars`) so dashboard runtime vars are not removed on deploy.
+
+`NEXT_PUBLIC_APP_URL` must be your production URL, not `http://localhost:3000`.
 
 ### Resend (transactional email)
 
