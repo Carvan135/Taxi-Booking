@@ -8,7 +8,7 @@ import { getRuntimeEnv } from "@/lib/env/runtime";
 import { isGeoapifyConfigured } from "@/lib/env/geoapify";
 import { isStripePublishableKeyConfigured } from "@/lib/stripe/publishable-key";
 import { isSmsConfigured } from "@/lib/sms/config";
-import { hasServiceRoleConfig } from "@/lib/supabase/admin";
+import { hasServiceRoleConfig, isSupabaseServiceRoleKeyValid } from "@/lib/supabase/admin";
 import { isSupabasePublicEnvConfigured } from "@/lib/env/supabase-public";
 
 export type HealthStatus = "healthy" | "degraded" | "unhealthy";
@@ -16,6 +16,7 @@ export type HealthStatus = "healthy" | "degraded" | "unhealthy";
 export type HealthChecks = {
   supabasePublicEnv: boolean;
   supabaseServiceRoleConfigured: boolean;
+  supabaseServiceRoleKeyValid: boolean;
   geoapifyConfigured: boolean;
   emailConfigured: boolean;
   resendApiKeyConfigured: boolean;
@@ -45,6 +46,7 @@ function buildChecks(): HealthChecks {
   return {
     supabasePublicEnv: isSupabasePublicEnvConfigured(),
     supabaseServiceRoleConfigured: hasServiceRoleConfig(),
+    supabaseServiceRoleKeyValid: isSupabaseServiceRoleKeyValid(),
     geoapifyConfigured: isGeoapifyConfigured(),
     emailConfigured: isEmailConfigured(),
     resendApiKeyConfigured: isResendApiKeyConfigured(),
@@ -80,7 +82,9 @@ export function buildHealthReport(options?: { readiness?: boolean }): HealthRepo
   const checks = buildChecks();
   const readiness =
     options?.readiness ??
-    (checks.supabasePublicEnv && checks.supabaseServiceRoleConfigured);
+    (checks.supabasePublicEnv &&
+      checks.supabaseServiceRoleConfigured &&
+      checks.supabaseServiceRoleKeyValid);
 
   const status = deriveStatus(checks, readiness);
 

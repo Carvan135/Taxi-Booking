@@ -1,10 +1,17 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getRuntimeEnv } from "@/lib/env/runtime";
+import {
+  assertSupabaseServiceRoleKey,
+  getSupabaseServiceRoleKey,
+  isSupabaseServiceRoleKeyValid,
+} from "@/lib/supabase/service-role-key";
+
+export { isSupabaseServiceRoleKeyValid, getSupabaseServiceRoleKeyRole } from "@/lib/supabase/service-role-key";
 
 export function hasServiceRoleConfig(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
-      getRuntimeEnv("SUPABASE_SERVICE_ROLE_KEY"),
+      getSupabaseServiceRoleKey(),
   );
 }
 
@@ -16,8 +23,9 @@ export function tryCreateAdminClient(): SupabaseClient | null {
   const url =
     getRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL") ??
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const serviceRoleKey = getRuntimeEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const serviceRoleKey = getSupabaseServiceRoleKey();
   if (!url || !serviceRoleKey) return null;
+  if (!isSupabaseServiceRoleKeyValid()) return null;
   return createClient(url, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -28,12 +36,18 @@ export function tryCreateAdminClient(): SupabaseClient | null {
  * Never import this from client components.
  */
 export function createAdminClient(): SupabaseClient {
-  const client = tryCreateAdminClient();
-  if (!client) {
+  assertSupabaseServiceRoleKey();
+  const url =
+    getRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL") ??
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
+  if (!url || !serviceRoleKey) {
     throw new Error(
       "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.",
     );
   }
-  return client;
+  return createClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 

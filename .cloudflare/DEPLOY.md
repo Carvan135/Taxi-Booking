@@ -27,6 +27,8 @@ With **Workers Builds** (Git deploy), Cloudflare has **two separate** env screen
 
 **Common mistake:** adding `RESEND_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, etc. only under **Workers Builds → Environment variables**. Those are **not** available to `/api/health` or other API routes at runtime.
 
+**Payment sync failure (503 after Stripe succeeds):** `SUPABASE_SERVICE_ROLE_KEY` must be the **service_role** JWT from Supabase → Settings → API — not the `anon` / public key. With the anon key, guest draft inserts succeed (RLS allows anon INSERT) but payment-status UPDATEs are blocked (0 rows), so `/api/bookings/create` returns 503 and webhooks return 200 without updating the row. After deploy, `GET /api/health` includes `supabaseServiceRoleKeyValid: true`.
+
 After deploy, `GET /api/health` includes a `runtime` object:
 
 - `bindingKeys` — Worker bindings visible to the app (should list your secret names if runtime vars are set)
