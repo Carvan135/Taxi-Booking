@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { useProfile } from "@/hooks/queries/useProfile";
-import { getDashboardPathForRole } from "@/lib/auth/routes";
+import { buildAccessDeniedPath } from "@/lib/auth/routes";
 import type { UserRole } from "@/types";
 
 type AuthGuardProps = {
@@ -35,7 +35,12 @@ export function AuthGuard({ allowedRoles, children }: AuthGuardProps) {
     }
 
     if (!allowed.includes(profile.role)) {
-      router.replace(getDashboardPathForRole(profile.role));
+      router.replace(
+        buildAccessDeniedPath({
+          requiredRole: allowed[0] ?? "customer",
+          currentRole: profile.role,
+        }),
+      );
     }
   }, [allowed, isError, isPending, profile, router]);
 

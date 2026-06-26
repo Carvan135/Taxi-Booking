@@ -139,7 +139,7 @@ export function Footer() {
             © {year} AirportHub · {SITE_DOMAIN}. All rights reserved.
           </p>
           <Link
-            href="/login/admin?redirect=/admin/dashboard"
+            href="/admin/dashboard"
             className="text-xs text-slate-500 transition hover:text-slate-300"
           >
             Admin

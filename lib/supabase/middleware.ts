@@ -1,8 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  buildAccessDeniedPath,
   getDashboardPathForRole,
   getLoginPathForRole,
+  getPortalRoleForAuthPath,
+  safeInternalRedirectPath,
 } from "@/lib/auth/routes";
 import { getSupabasePublicEnv } from "@/lib/env/supabase-public";
 import type { UserRole } from "@/types";
@@ -37,6 +40,7 @@ function isPublicPath(pathname: string): boolean {
     "/reset-password",
     "/auth/reset-password",
     "/auth/callback",
+    "/access-denied",
   ];
   for (const root of publicRoots) {
     if (pathname === root || pathname.startsWith(`${root}/`)) return true;
@@ -133,9 +137,28 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
 
   if (isAuthPage(pathname)) {
     if (user && role) {
-      const target = NextResponse.redirect(
-        new URL(getDashboardPathForRole(role), request.url),
+      const portalRole = getPortalRoleForAuthPath(pathname);
+      if (portalRole === null) {
+        return supabaseResponse;
+      }
+      if (portalRole !== role) {
+        const target = NextResponse.redirect(
+          new URL(
+            buildAccessDeniedPath({
+              requiredRole: portalRole,
+              currentRole: role,
+            }),
+            request.url,
+          ),
+        );
+        mergeCookies(supabaseResponse, target);
+        return target;
+      }
+      const redirectParam = safeInternalRedirectPath(
+        request.nextUrl.searchParams.get("redirect"),
       );
+      const destination = redirectParam ?? getDashboardPathForRole(role);
+      const target = NextResponse.redirect(new URL(destination, request.url));
       mergeCookies(supabaseResponse, target);
       return target;
     }
@@ -161,7 +184,13 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
       return res;
     }
     if (role !== "customer") {
-      const dest = new URL(getDashboardPathForRole(role), request.url);
+      const dest = new URL(
+        buildAccessDeniedPath({
+          requiredRole: "customer",
+          currentRole: role,
+        }),
+        request.url,
+      );
       const res = NextResponse.redirect(dest);
       mergeCookies(supabaseResponse, res);
       return res;
@@ -192,7 +221,13 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   if (role !== neededRole) {
-    const dest = new URL(getDashboardPathForRole(role), request.url);
+    const dest = new URL(
+      buildAccessDeniedPath({
+        requiredRole: neededRole,
+        currentRole: role,
+      }),
+      request.url,
+    );
     const res = NextResponse.redirect(dest);
     mergeCookies(supabaseResponse, res);
     return res;
