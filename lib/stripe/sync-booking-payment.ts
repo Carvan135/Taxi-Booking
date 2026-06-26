@@ -145,13 +145,20 @@ export async function syncBookingsFromPaymentIntent(
       updated_at: now,
     };
 
-    const { error: updateError } = await supabase
+    const { data: updatedRows, error: updateError } = await supabase
       .from("bookings")
       .update(updatePayload)
-      .eq("stripe_payment_intent_id", intent.id);
+      .eq("stripe_payment_intent_id", intent.id)
+      .select("id");
 
     if (updateError) {
       return { updated: false, error: updateError.message };
+    }
+    if (!updatedRows?.length) {
+      return {
+        updated: false,
+        error: `No booking rows updated for payment intent ${intent.id}`,
+      };
     }
 
     if (sendNotifications) {
@@ -161,16 +168,23 @@ export async function syncBookingsFromPaymentIntent(
   }
 
   if (intent.status === "canceled") {
-    const { error: updateError } = await supabase
+    const { data: updatedRows, error: updateError } = await supabase
       .from("bookings")
       .update({
         ...paymentFields,
         updated_at: now,
       })
-      .eq("stripe_payment_intent_id", intent.id);
+      .eq("stripe_payment_intent_id", intent.id)
+      .select("id");
 
     if (updateError) {
       return { updated: false, error: updateError.message };
+    }
+    if (!updatedRows?.length) {
+      return {
+        updated: false,
+        error: `No booking rows updated for payment intent ${intent.id}`,
+      };
     }
     return { updated: true };
   }
@@ -183,16 +197,23 @@ export async function syncBookingsFromPaymentIntent(
     return { updated: false };
   }
 
-  const { error: updateError } = await supabase
+  const { data: updatedRows, error: updateError } = await supabase
     .from("bookings")
     .update({
       ...paymentFields,
       updated_at: now,
     })
-    .eq("stripe_payment_intent_id", intent.id);
+    .eq("stripe_payment_intent_id", intent.id)
+    .select("id");
 
   if (updateError) {
     return { updated: false, error: updateError.message };
+  }
+  if (!updatedRows?.length) {
+    return {
+      updated: false,
+      error: `No booking rows updated for payment intent ${intent.id}`,
+    };
   }
   return { updated: true };
 }
@@ -203,7 +224,7 @@ export async function syncBookingsPaymentFailed(
   paymentIntentId: string,
 ): Promise<{ updated: boolean; error?: string }> {
   const now = new Date().toISOString();
-  const { error: updateError } = await supabase
+  const { data: updatedRows, error: updateError } = await supabase
     .from("bookings")
     .update({
       payment_status: PAYMENT_FAILED,
@@ -211,10 +232,14 @@ export async function syncBookingsPaymentFailed(
       status: BOOKING_STATUS.pending,
       updated_at: now,
     })
-    .eq("stripe_payment_intent_id", paymentIntentId);
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .select("id");
 
   if (updateError) {
     return { updated: false, error: updateError.message };
+  }
+  if (!updatedRows?.length) {
+    return { updated: false };
   }
   return { updated: true };
 }

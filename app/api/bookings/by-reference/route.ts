@@ -73,11 +73,17 @@ export async function GET(req: Request) {
       primary.payment_status !== "paid" &&
       primary.stripe_payment_intent_id?.trim()
     ) {
-      await reconcilePaymentIntentById(
+      const reconciled = await reconcilePaymentIntentById(
         supabase,
         primary.stripe_payment_intent_id.trim(),
         { sendNotifications: true },
       );
+      if (reconciled.error) {
+        console.error(
+          "bookings/by-reference reconcile error:",
+          reconciled.error,
+        );
+      }
     }
 
     const { data: refreshed, error: refreshError } = await supabase

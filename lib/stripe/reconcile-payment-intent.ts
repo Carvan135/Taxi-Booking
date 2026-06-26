@@ -12,6 +12,12 @@ export type ReconcilePaymentIntentResult = {
   stripeStatus?: string;
 };
 
+export type ReconcileUnpaidBookingsResult = {
+  checked: number;
+  synced: number;
+  errors: string[];
+};
+
 /** Pull PaymentIntent state from Stripe and sync matching bookings in Supabase. */
 export async function reconcilePaymentIntentById(
   supabase: SupabaseClient,
@@ -59,9 +65,20 @@ export async function reconcileUnpaidBookingsForPaymentIntents(
   supabase: SupabaseClient,
   paymentIntentIds: string[],
   options?: { sendNotifications?: boolean },
-): Promise<void> {
+): Promise<ReconcileUnpaidBookingsResult> {
   const unique = Array.from(new Set(paymentIntentIds.filter(Boolean)));
+  let synced = 0;
+  const errors: string[] = [];
+
   for (const id of unique) {
-    await reconcilePaymentIntentById(supabase, id, options);
+    const result = await reconcilePaymentIntentById(supabase, id, options);
+    if (result.synced) {
+      synced += 1;
+    } else if (result.error) {
+      errors.push(`${id}: ${result.error}`);
+      console.error("reconcile payment intent error:", id, result.error);
+    }
   }
+
+  return { checked: unique.length, synced, errors };
 }

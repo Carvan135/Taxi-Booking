@@ -41,11 +41,13 @@ export async function POST() {
       .map((row) => row.stripe_payment_intent_id)
       .filter((id): id is string => Boolean(id?.trim()));
 
-    await reconcileUnpaidBookingsForPaymentIntents(supabase, intentIds, {
-      sendNotifications: true,
-    });
+    const result = await reconcileUnpaidBookingsForPaymentIntents(
+      supabase,
+      intentIds,
+      { sendNotifications: true },
+    );
 
-    return NextResponse.json({ ok: true, reconciled: intentIds.length });
+    return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     console.error("operator/reconcile-payments error:", err);
     return NextResponse.json(

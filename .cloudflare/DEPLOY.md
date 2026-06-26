@@ -92,13 +92,13 @@ After deploy, verify:
 
 | Variable | Type | Notes |
 |----------|------|--------|
-| `CRON_SECRET` | Runtime **secret** | Required in production. Cloudflare Cron Triggers call `/api/cron/auto-complete` and `/api/cron/sms-reminders` with `Authorization: Bearer <secret>`. |
+| `CRON_SECRET` | Runtime **secret** | Required in production. Cloudflare Cron Triggers call `/api/cron/auto-complete`, `/api/cron/reconcile-payments`, and `/api/cron/sms-reminders` with `Authorization: Bearer <secret>`. |
 | `TWILIO_ACCOUNT_SID` | Runtime secret | SMS pickup reminders |
 | `TWILIO_AUTH_TOKEN` | Runtime secret | SMS pickup reminders |
 | `TWILIO_PHONE_NUMBER` | Runtime variable | E.164 sender number |
 | `RESEND_*` | Runtime | Auto-complete warning + receipt emails |
 
-Cron schedules are defined in `wrangler.jsonc` (`*/15 * * * *` — every 15 minutes). Entry point: `cloudflare-worker.ts` (wraps OpenNext + `scheduled` handler).
+Cron schedules are defined in `wrangler.jsonc` (`*/15 * * * *` — every 15 minutes). Entry point: `cloudflare-worker.ts` (wraps OpenNext + `scheduled` handler). The reconcile-payments job syncs unpaid bookings that already have a Stripe PaymentIntent id (safety net when webhooks lag).
 
 **Expire-pending** (daily cleanup of stale unpaid bookings) runs in **Supabase `pg_cron`**, not Cloudflare. Apply migration `036_cloudflare_auto_complete_cron.sql` so the old Supabase auto-complete schedule is removed.
 
@@ -108,6 +108,7 @@ After deploy:
 2. Manual test:
    ```bash
    curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://airporthub.co.uk/api/cron/auto-complete
+   curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://airporthub.co.uk/api/cron/reconcile-payments
    curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://airporthub.co.uk/api/cron/sms-reminders
    ```
 3. Supabase SQL: `SELECT jobid, jobname, schedule FROM cron.job;` — expect **`carvan-expire-pending`** only (not `carvan-auto-complete`).

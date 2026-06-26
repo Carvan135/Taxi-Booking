@@ -22,6 +22,17 @@ export async function finalizeBookingAfterPayment(
   const json = (await res.json()) as FinalizeBookingResponse;
 
   if (res.status === 503 && json.payment_succeeded) {
+    const recovery = await tryFinalizeFromSucceededIntent(body);
+    if (recovery.ok && recovery.booking_reference) {
+      return {
+        ...recovery,
+        ok: true,
+        status: 200,
+        success: true,
+        booking_reference: recovery.booking_reference,
+      };
+    }
+
     return {
       ...json,
       ok: true,

@@ -76,6 +76,7 @@ export default {
     ctx.waitUntil(
       (async () => {
         await invokeCronRoute(env, "/api/cron/auto-complete");
+        await invokeCronRoute(env, "/api/cron/reconcile-payments");
         await invokeCronRoute(env, "/api/cron/sms-reminders");
       })(),
     );

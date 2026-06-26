@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 
       case "payment_intent.succeeded": {
         const intent = event.data.object as Stripe.PaymentIntent;
-        const sync = await syncBookingsFromPaymentIntent(supabase, intent, {
+        let sync = await syncBookingsFromPaymentIntent(supabase, intent, {
           sendNotifications: true,
         });
 
@@ -78,27 +78,33 @@ export async function POST(req: Request) {
             intent.id,
             { sendNotifications: true },
           );
-          if (!recovered.synced && !recovered.error) {
+          if (recovered.synced) {
+            sync = { updated: true };
+          } else if (!recovered.error) {
             console.log("Booking not yet created for intent:", intent.id);
-          }
-          if (recovered.error) {
+          } else {
             console.error(
               "payment_intent.succeeded reconcile error:",
               recovered.error,
             );
+            sync = { updated: false, error: recovered.error };
           }
         }
+
         if (sync.error) {
           console.error(
             "payment_intent.succeeded booking sync error:",
             sync.error,
           );
-        } else {
-          try {
-            await emitBookingConfirmationSafetyNet(supabase, intent.id);
-          } catch (emailErr) {
-            console.error("confirmation email safety net error:", emailErr);
-          }
+          return new Response(`Booking sync failed: ${sync.error}`, {
+            status: 500,
+          });
+        }
+
+        try {
+          await emitBookingConfirmationSafetyNet(supabase, intent.id);
+        } catch (emailErr) {
+          console.error("confirmation email safety net error:", emailErr);
         }
         break;
       }
@@ -112,6 +118,9 @@ export async function POST(req: Request) {
             "payment_intent.payment_failed booking update error:",
             sync.error,
           );
+          return new Response(`Booking sync failed: ${sync.error}`, {
+            status: 500,
+          });
         }
         break;
       }
@@ -121,6 +130,7 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     console.error("Error handling webhook event:", err);
+    return new Response("Webhook handler error", { status: 500 });
   }
 
   return new Response("ok", { status: 200 });
