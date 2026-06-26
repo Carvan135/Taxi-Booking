@@ -77,7 +77,7 @@ Customer–operator taxi booking marketplace for the UK. Milestone 1 focuses on 
    - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
    - `NEXT_PUBLIC_APP_URL` (your Netlify site URL, e.g. `https://your-site.netlify.app`)
    - Optional: `NEXT_PUBLIC_SUPPORT_EMAIL`
-3. **Auto-complete cron (Supabase only — no Netlify setup):** See [Supabase auto-complete cron](#supabase-auto-complete-cron) below.
+3. **Auto-complete + SMS cron (Cloudflare):** See [Scheduled jobs (cron)](#scheduled-jobs-cron) — requires `CRON_SECRET`, Twilio, and Resend on the Worker.
 4. Redeploy after removing `.env` / `.env.production` from the repository. If secrets were ever pushed to a public repo, rotate Stripe and Supabase keys and consider purging git history ([BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) or `git filter-repo`).
 
 ### Vercel + GitHub
@@ -108,37 +108,59 @@ If the app is deployed to Cloudflare Workers (for example `*.workers.dev`), **ev
    - `NEXT_PUBLIC_APP_URL` (your Workers URL, e.g. `https://taxi-booking.example.workers.dev`)
    - **`GEOAPIFY_API_KEY`** (address autocomplete; use a server key without HTTP referrer restrictions)
    - **`RESEND_API_KEY`**, **`RESEND_FROM_EMAIL`**, **`RESEND_FROM_NAME`** (transactional email from airporthub.co.uk)
-2. Redeploy after changing secrets.
-3. Verify: `GET /api/health` should show `"geoapifyConfigured": true` and `"emailConfigured": true` when Resend is set.
-3. **Symptom:** “Application error: a server-side exception has occurred” on `/admin/dashboard` or after sign-in usually means a required secret (often `SUPABASE_SERVICE_ROLE_KEY`) was missing at runtime.
+   - **`TWILIO_ACCOUNT_SID`**, **`TWILIO_AUTH_TOKEN`**, **`TWILIO_PHONE_NUMBER`** (SMS pickup reminders)
+   - **`CRON_SECRET`** (runtime secret — required in production; used by Cloudflare Cron Triggers)
+2. Redeploy after changing secrets (`npm run cf:build-and-deploy`).
+3. Verify: `GET /api/health` should show `"geoapifyConfigured": true`, `"emailConfigured": true`, and `"cronSecretConfigured": true` when set.
+4. **Symptom:** “Application error: a server-side exception has occurred” on `/admin/dashboard` or after sign-in usually means a required secret (often `SUPABASE_SERVICE_ROLE_KEY`) was missing at runtime.
 
-## Supabase auto-complete cron
+See [Scheduled jobs (cron)](#scheduled-jobs-cron) below.
 
-Booking auto-complete and operator unpause run in a **Supabase Edge Function** on a schedule. No Netlify cron or `CRON_SECRET` is required.
+## Scheduled jobs (cron)
 
-1. Apply migrations (includes `021_supabase_auto_complete_cron.sql`).
-2. Enable extensions **pg_cron**, **pg_net**, **supabase_vault** (Database → Extensions).
-3. Deploy the function: `supabase functions deploy auto-complete`
-4. Create Vault secrets (SQL editor, once per project):
+| Job | Where it runs | Schedule | What it does |
+| --- | --- | --- | --- |
+| **Auto-complete** | Cloudflare Cron → `/api/cron/auto-complete` | Every 15 min | Completes stale bookings, sends warning/receipt emails, releases eligible payouts |
+| **SMS reminders** | Cloudflare Cron → `/api/cron/sms-reminders` | Every 15 min | Twilio pickup reminders for confirmed bookings in the reminder window |
+| **Expire pending** | Supabase `pg_cron` → Postgres function | Daily 03:00 UTC | Cancels abandoned unpaid `pending` bookings older than 7 days |
 
-```sql
-SELECT vault.create_secret('https://YOUR_PROJECT_REF.supabase.co', 'project_url', 'Supabase API URL');
-SELECT vault.create_secret('YOUR_SUPABASE_ANON_KEY', 'publishable_key', 'anon key for scheduled invoke');
+### Cloudflare cron (auto-complete + SMS)
+
+Configured in `wrangler.jsonc` via `cloudflare-worker.ts` (custom Worker with a `scheduled` handler). Requires **`CRON_SECRET`** in Worker runtime secrets.
+
+After deploy, manual test (replace URL and secret):
+
+```bash
+curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://airporthub.co.uk/api/cron/auto-complete
+curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://airporthub.co.uk/api/cron/sms-reminders
 ```
 
-5. Confirm job **carvan-auto-complete** exists: `SELECT * FROM cron.job;`
-6. Manual test: `supabase functions invoke auto-complete --no-verify-jwt` (local) or invoke from Dashboard → Edge Functions.
+Local preview (after `npm run pages:build`):
 
-## Supabase expire-pending cron
+```bash
+npx wrangler dev --test-scheduled
+curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=*/15+*+*+*+*"
+```
 
-Abandoned unpaid bookings (`pending` + `unpaid`, older than 7 days) are cancelled by **pg_cron** calling a Postgres function. No Edge Function or Netlify cron.
+### Supabase expire-pending cron
 
-1. Apply migrations (includes `028_payment_edge_cases.sql` and `029_expire_pending_cron.sql`).
-2. Enable extension **pg_cron** (Database → Extensions) if not already enabled for auto-complete.
-3. Confirm job **carvan-expire-pending** exists: `SELECT jobid, jobname, schedule FROM cron.job;`
-4. Manual test: `SELECT public.expire_stale_pending_bookings(interval '7 days');` (returns number of rows cancelled).
+Abandoned unpaid bookings (`pending` + `unpaid`, older than 7 days) are cancelled by **pg_cron** calling a Postgres function. No Edge Function or Cloudflare cron.
 
-Schedule: daily at **03:00 UTC**. To change it, update the job in SQL Editor or edit `029_expire_pending_cron.sql` before applying.
+1. Apply migrations (includes `028_payment_edge_cases.sql`, `029_expire_pending_cron.sql`, and `036_cloudflare_auto_complete_cron.sql`).
+2. Enable extension **pg_cron** (Database → Extensions).
+3. Confirm job **carvan-expire-pending** exists (and **carvan-auto-complete** does **not**):
+
+```sql
+SELECT jobid, jobname, schedule, active FROM cron.job;
+```
+
+4. Manual test: `SELECT public.expire_stale_pending_bookings(interval '7 days');`
+
+Schedule: daily at **03:00 UTC**.
+
+### Legacy Supabase auto-complete Edge Function
+
+Migration `035` removes the `carvan-auto-complete` pg_cron job (auto-complete now uses the full Next.js job on Cloudflare). The Edge Function at `supabase/functions/auto-complete` remains for optional manual invoke only — it does **not** send Resend emails or release payouts.
 
 ## Transactional email (Resend)
 

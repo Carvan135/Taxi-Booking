@@ -4,7 +4,11 @@
   // Preserve dashboard Variables on deploy (secrets are always preserved).
   // Without this, wrangler deploy replaces all vars with wrangler.jsonc only — wiping manual entries.
   "keep_vars": true,
-  "main": ".open-next/worker.js",
+  "main": "./cloudflare-worker.ts",
+  "triggers": {
+    // Auto-complete + SMS pickup reminders (expire-pending stays on Supabase pg_cron).
+    "crons": ["*/15 * * * *"]
+  },
   "compatibility_date": "2025-04-01",
   "compatibility_flags": [
     "nodejs_compat",

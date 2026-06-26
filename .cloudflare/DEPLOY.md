@@ -87,3 +87,27 @@ After deploy, verify:
 - `GET /api/health` includes `stripeWebhookSecretConfigured: true` and `stripeConnectWebhookSecretConfigured: true`
 - `POST /api/stripe/payment-intent` returns `publishable_key` and `client_secret`
 - `/payment` shows the Stripe card form (not only the page header)
+
+### Cron (scheduled jobs)
+
+| Variable | Type | Notes |
+|----------|------|--------|
+| `CRON_SECRET` | Runtime **secret** | Required in production. Cloudflare Cron Triggers call `/api/cron/auto-complete` and `/api/cron/sms-reminders` with `Authorization: Bearer <secret>`. |
+| `TWILIO_ACCOUNT_SID` | Runtime secret | SMS pickup reminders |
+| `TWILIO_AUTH_TOKEN` | Runtime secret | SMS pickup reminders |
+| `TWILIO_PHONE_NUMBER` | Runtime variable | E.164 sender number |
+| `RESEND_*` | Runtime | Auto-complete warning + receipt emails |
+
+Cron schedules are defined in `wrangler.jsonc` (`*/15 * * * *` — every 15 minutes). Entry point: `cloudflare-worker.ts` (wraps OpenNext + `scheduled` handler).
+
+**Expire-pending** (daily cleanup of stale unpaid bookings) runs in **Supabase `pg_cron`**, not Cloudflare. Apply migration `036_cloudflare_auto_complete_cron.sql` so the old Supabase auto-complete schedule is removed.
+
+After deploy:
+
+1. `GET /api/health` → `cronSecretConfigured: true`, `smsConfigured: true`, `emailConfigured: true`
+2. Manual test:
+   ```bash
+   curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://airporthub.co.uk/api/cron/auto-complete
+   curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://airporthub.co.uk/api/cron/sms-reminders
+   ```
+3. Supabase SQL: `SELECT jobid, jobname, schedule FROM cron.job;` — expect **`carvan-expire-pending`** only (not `carvan-auto-complete`).
