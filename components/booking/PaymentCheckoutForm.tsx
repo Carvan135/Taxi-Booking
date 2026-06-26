@@ -27,6 +27,11 @@ import {
   pollPaymentIntentStatus,
   tryFinalizeFromSucceededIntent,
 } from "@/lib/booking/payment-finalize-client";
+import {
+  logPaymentClientError,
+  paymentUiError,
+  PAYMENT_UI,
+} from "@/lib/booking/payment-client-errors";
 import type { CreateBookingBody } from "@/lib/booking/insert-pending-bookings";
 import {
   guestDetailsSchema,
@@ -49,6 +54,12 @@ const stripeAppearance = {
 type PaymentCheckoutFormProps = {
   trip: TaxibookBookingSession;
   pricing: BookingPriceBreakdown;
+  /** Authoritative totals from POST /api/stripe/payment-intent (avoids client/server drift). */
+  serverPricing?: {
+    total: number;
+    platform_fee: number;
+    operator_payout: number;
+  };
   paymentIntentId: string;
   profile: Profile | null | undefined;
   isAuthenticated: boolean;
@@ -59,6 +70,7 @@ type PaymentCheckoutFormProps = {
 export function PaymentCheckoutForm({
   trip,
   pricing,
+  serverPricing,
   paymentIntentId,
   profile,
   isAuthenticated,
@@ -104,6 +116,10 @@ export function PaymentCheckoutForm({
     (customer: GuestDetailsFormInput): CreateBookingBody | null => {
       const operator = trip.selected_operator;
       if (!operator) return null;
+      const total = serverPricing?.total ?? pricing.total;
+      const platformFee = serverPricing?.platform_fee ?? pricing.platformFee;
+      const operatorPayout =
+        serverPricing?.operator_payout ?? pricing.baseFareTotal;
       return {
         payment_intent_id: paymentIntentId,
         operator_id: operator.operator_id,
@@ -120,14 +136,14 @@ export function PaymentCheckoutForm({
         passengers: trip.passengers,
         service_type: trip.service_type,
         luggage: trip.luggage ?? 0,
-        price: pricing.total,
-        platform_fee: pricing.platformFee,
-        operator_payout: pricing.baseFareTotal,
+        price: total,
+        platform_fee: platformFee,
+        operator_payout: operatorPayout,
         notes: trip.notes,
         customer_id: profile?.id ?? null,
       };
     },
-    [trip, paymentIntentId, pricing, profile?.id],
+    [trip, paymentIntentId, pricing, serverPricing, profile?.id],
   );
 
   const completeBooking = useCallback(
@@ -173,6 +189,13 @@ export function PaymentCheckoutForm({
         }
 
         lastError = result.error;
+        logPaymentClientError("finalize booking failed", {
+          attempt: attempt + 1,
+          status: result.status,
+          error: result.error,
+          payment_succeeded: result.payment_succeeded,
+          details: result.details,
+        });
         if (attempt < 2) {
           await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
           const recovery = await tryFinalizeFromSucceededIntent(body);
@@ -182,7 +205,9 @@ export function PaymentCheckoutForm({
         }
       }
 
-      throw new Error(lastError ?? "Could not save your booking");
+      throw new Error(
+        paymentUiError(lastError, PAYMENT_UI.bookingFailed),
+      );
     },
     [
       buildCreateBody,
@@ -205,11 +230,18 @@ export function PaymentCheckoutForm({
         body: JSON.stringify(body),
       });
 
+      const resBody = (await res.json()) as {
+        error?: string;
+        details?: { code?: string };
+        payment_already_complete?: boolean;
+      };
+
       if (!res.ok) {
-        const resBody = (await res.json()) as {
-          error?: string;
-          details?: { code?: string; fieldErrors?: Record<string, string[]> };
-        };
+        logPaymentClientError("draft save failed", {
+          status: res.status,
+          error: resBody.error,
+          details: resBody.details,
+        });
         if (resBody.details?.code === "amount_mismatch" && onPriceMismatch) {
           onPriceMismatch();
           setPaymentError(
@@ -217,18 +249,14 @@ export function PaymentCheckoutForm({
           );
           return false;
         }
-        const validationHint =
-          resBody.details &&
-          "fieldErrors" in resBody.details &&
-          resBody.details.fieldErrors
-            ? Object.values(resBody.details.fieldErrors).flat().join(" ")
-            : null;
         setPaymentError(
-          resBody.error ??
-            validationHint ??
-            "Could not save your booking details",
+          paymentUiError(resBody.error, PAYMENT_UI.draftFailed),
         );
         return false;
+      }
+
+      if (resBody.payment_already_complete) {
+        setDraftReady(true);
       }
       return true;
     },
@@ -316,8 +344,13 @@ export function PaymentCheckoutForm({
     try {
       await completeBooking(customer);
     } catch (err) {
+      logPaymentClientError("complete booking error", {
+        error: err instanceof Error ? err.message : err,
+      });
       setPaymentError(
-        err instanceof Error ? err.message : "Booking could not be saved",
+        err instanceof Error
+          ? err.message
+          : PAYMENT_UI.bookingFailed,
       );
       setIsPaying(false);
     }

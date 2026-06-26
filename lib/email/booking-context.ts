@@ -70,7 +70,7 @@ function mapLeg(row: Record<string, unknown>): BookingEmailLeg {
     pickup_date: String(row.pickup_date),
     pickup_time: String(row.pickup_time),
     passengers: Number(row.passengers ?? 1),
-    service_type: String(row.service_type ?? "standard"),
+    service_type: String(row.service_type ?? "Saloon"),
     price: Number(row.price ?? 0),
     platform_commission: Number(row.platform_commission ?? 0),
     operator_name: op?.business_name ?? null,

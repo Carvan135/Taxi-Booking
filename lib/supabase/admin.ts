@@ -13,7 +13,9 @@ export function hasServiceRoleConfig(): boolean {
  * Prefer this in Server Components so missing deploy secrets do not crash pages.
  */
 export function tryCreateAdminClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const url =
+    getRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL") ??
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const serviceRoleKey = getRuntimeEnv("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceRoleKey) return null;
   return createClient(url, serviceRoleKey, {

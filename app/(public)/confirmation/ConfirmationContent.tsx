@@ -25,16 +25,10 @@ import { loadConfirmationSnapshot } from "@/lib/booking/session";
 import { guestSession } from "@/lib/guest/session";
 import { guestSignUpAndClaimBookingsClient } from "@/lib/guest/account";
 import { signUpSchema } from "@/lib/validations/auth";
+import { formatBookingVehicleType } from "@/lib/operator/fleet-vehicle-types";
 import type { ServiceType } from "@/lib/validations/enums";
 import { createClient } from "@/lib/supabase/client";
 import { SITE_EMAILS } from "@/lib/site/contact";
-
-const SERVICE_LABELS: Record<ServiceType, string> = {
-  standard: "Standard",
-  executive: "Executive",
-  van: "Van",
-  suv: "SUV",
-};
 
 const guestPasswordSchema = z.object({
   password: signUpSchema.shape.password,
@@ -358,8 +352,8 @@ export default function ConfirmationContent() {
             <ul className="space-y-3 border-t border-slate-100 pt-4 text-sm">
               <DetailRow
                 icon={Car}
-                label="Service type"
-                value={SERVICE_LABELS[outbound.service_type]}
+                label="Vehicle type"
+                value={formatBookingVehicleType(outbound.service_type)}
               />
               <DetailRow
                 icon={Users}
@@ -393,8 +387,8 @@ export default function ConfirmationContent() {
             />
             <DetailRow
               icon={Car}
-              label="Service type"
-              value={SERVICE_LABELS[outbound.service_type]}
+              label="Vehicle type"
+              value={formatBookingVehicleType(outbound.service_type)}
             />
             <DetailRow
               icon={Users}

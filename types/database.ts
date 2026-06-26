@@ -55,7 +55,14 @@ export type BookingType = "one_way" | "return";
 
 export type BookingLeg = "outbound" | "return";
 
-export type ServiceType = "standard" | "executive" | "van" | "suv";
+export type ServiceType =
+  | "Saloon"
+  | "EV"
+  | "Estate"
+  | "MPV"
+  | "Executive"
+  | "8 Seater"
+  | "Luxury";
 
 export type RuleType = "multiplier" | "fixed_fee";
 

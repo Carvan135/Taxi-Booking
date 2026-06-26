@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { throwAsError } from "@/lib/api/error-message";
 import {
   generateBookingReference,
   generateGroupReference,
@@ -37,8 +36,6 @@ export type PendingBookingRow = {
   reference: string;
   leg: BookingLeg;
   group_reference: string | null;
-  status?: string;
-  payment_status?: string;
 };
 
 export function pendingBookingSuccessPayload(rows: PendingBookingRow[]) {
@@ -57,25 +54,14 @@ export function pendingBookingSuccessPayload(rows: PendingBookingRow[]) {
 export async function findBookingsByPaymentIntent(
   supabase: SupabaseClient,
   paymentIntentId: string,
-  options?: { pendingOnly?: boolean },
 ): Promise<PendingBookingRow[]> {
-  let query = supabase
+  const { data, error } = await supabase
     .from("bookings")
-    .select("id, reference, leg, group_reference, status, payment_status")
+    .select("id, reference, leg, group_reference")
     .eq("stripe_payment_intent_id", paymentIntentId)
     .order("created_at", { ascending: true });
 
-  if (options?.pendingOnly) {
-    query = query
-      .eq("status", BOOKING_STATUS.pending)
-      .eq("payment_status", PAYMENT_UNPAID);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    throwAsError(error, "Could not load booking for payment session");
-  }
+  if (error) throw error;
   return (data ?? []) as PendingBookingRow[];
 }
 
@@ -108,7 +94,6 @@ export async function insertPendingBookings(
   const existing = await findBookingsByPaymentIntent(
     supabase,
     body.payment_intent_id,
-    { pendingOnly: true },
   );
 
   if (existing.length > 0) {
@@ -135,9 +120,7 @@ export async function insertPendingBookings(
         .eq("stripe_payment_intent_id", body.payment_intent_id)
         .eq("status", BOOKING_STATUS.pending);
 
-      if (updateError) {
-        throwAsError(updateError, "Could not update booking draft");
-      }
+      if (updateError) throw updateError;
     } else {
       const legPrice = splitHalf(body.price);
       const legPlatformFee = splitHalf(body.platform_fee);
@@ -149,9 +132,7 @@ export async function insertPendingBookings(
         .eq("stripe_payment_intent_id", body.payment_intent_id)
         .eq("status", BOOKING_STATUS.pending);
 
-      if (customerUpdateError) {
-        throwAsError(customerUpdateError, "Could not update booking draft");
-      }
+      if (customerUpdateError) throw customerUpdateError;
 
       const { error: outboundError } = await supabase
         .from("bookings")
@@ -171,9 +152,7 @@ export async function insertPendingBookings(
         .eq("leg", LEG_OUTBOUND)
         .eq("status", BOOKING_STATUS.pending);
 
-      if (outboundError) {
-        throwAsError(outboundError, "Could not update booking draft");
-      }
+      if (outboundError) throw outboundError;
 
       const { error: returnError } = await supabase
         .from("bookings")
@@ -193,9 +172,7 @@ export async function insertPendingBookings(
         .eq("leg", LEG_RETURN)
         .eq("status", BOOKING_STATUS.pending);
 
-      if (returnError) {
-        throwAsError(returnError, "Could not update booking draft");
-      }
+      if (returnError) throw returnError;
     }
 
     return existing;
@@ -246,9 +223,7 @@ export async function insertPendingBookings(
       .select("id, reference, leg, group_reference")
       .single();
 
-    if (insertError) {
-      throwAsError(insertError, "Could not save booking draft");
-    }
+    if (insertError) throw insertError;
     insertedRows.push(row as PendingBookingRow);
   } else {
     const groupReference = generateGroupReference();
@@ -310,7 +285,7 @@ export async function insertPendingBookings(
               insertedRows.map((r) => r.id),
             );
         }
-        throwAsError(insertError, "Could not save booking draft");
+        throw insertError;
       }
       insertedRows.push(row as PendingBookingRow);
     }

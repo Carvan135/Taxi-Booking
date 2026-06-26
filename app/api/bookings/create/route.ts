@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { createBookingBodySchema } from "@/lib/booking/api-schemas";
+import {
+  logRouteError,
+  userMessageForFinalizeFailure,
+  userMessageForInvalidBookingRequest,
+  userMessageForPaymentVerifyFailure,
+} from "@/lib/api/route-errors";
 import { finalizePaidBooking } from "@/lib/booking/finalize-paid-booking";
 import { pollPaymentIntentUntilSettled } from "@/lib/booking/poll-payment-intent";
 import { getStripeServer } from "@/lib/stripe/server";
@@ -14,8 +20,12 @@ export async function POST(req: Request) {
     const json: unknown = await req.json();
     const parsed = createBookingBodySchema.safeParse(json);
     if (!parsed.success) {
+      logRouteError("bookings/create", parsed.error, {
+        reason: "validation_failed",
+        details: parsed.error.flatten(),
+      });
       return NextResponse.json(
-        { error: "Invalid request", details: parsed.error.flatten() },
+        { error: userMessageForInvalidBookingRequest() },
         { status: 400 },
       );
     }
@@ -30,9 +40,12 @@ export async function POST(req: Request) {
         body.payment_intent_id,
       );
     } catch (stripeErr) {
-      console.error("bookings/create stripe retrieve error:", stripeErr);
+      logRouteError("bookings/create", stripeErr, {
+        reason: "stripe_retrieve_failed",
+        payment_intent_id: body.payment_intent_id,
+      });
       return NextResponse.json(
-        { error: "Could not verify payment" },
+        { error: userMessageForPaymentVerifyFailure() },
         { status: 400 },
       );
     }
@@ -57,9 +70,25 @@ export async function POST(req: Request) {
     const result = await finalizePaidBooking(supabase, body, paymentIntent);
 
     if (!result.ok) {
+      logRouteError("bookings/create", new Error(result.error), {
+        reason: "finalize_failed",
+        payment_intent_id: body.payment_intent_id,
+        payment_succeeded: result.payment_succeeded,
+        status: result.status,
+        details: result.details,
+      });
+      const detailsCode =
+        result.details &&
+        typeof result.details === "object" &&
+        "code" in result.details
+          ? String((result.details as { code?: string }).code)
+          : undefined;
       return NextResponse.json(
         {
-          error: result.error,
+          error: userMessageForFinalizeFailure({
+            paymentSucceeded: result.payment_succeeded,
+            code: detailsCode,
+          }),
           payment_succeeded: result.payment_succeeded,
           booking_reference: result.booking_reference,
           details: result.details,
@@ -70,14 +99,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result.payload);
   } catch (err) {
-    console.error("bookings/create error:", {
+    logRouteError("bookings/create", err, {
+      reason: "unexpected",
       payment_intent_id: paymentIntentId,
-      err,
     });
     return NextResponse.json(
       {
-        error:
-          "Failed to save booking. Please contact support with your payment confirmation.",
+        error: userMessageForFinalizeFailure(),
       },
       { status: 500 },
     );

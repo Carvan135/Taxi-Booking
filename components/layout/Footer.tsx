@@ -1,4 +1,4 @@
-import { Car } from "lucide-react";
+import { Plane } from "lucide-react";
 import Link from "next/link";
 import { CookieSettingsButton } from "@/components/cookies/CookieSettingsButton";
 import { SITE_EMAILS } from "@/lib/site/contact";
@@ -36,7 +36,7 @@ export function Footer() {
               className="flex items-center gap-2 text-lg font-bold tracking-tight text-white"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
-                <Car className="h-5 w-5 text-white" aria-hidden />
+                <Plane className="h-5 w-5 text-white" aria-hidden />
               </span>
               AirportHub
             </Link>

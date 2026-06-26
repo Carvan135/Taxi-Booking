@@ -1,6 +1,6 @@
 "use client";
 
-import { Car, Menu, X } from "lucide-react";
+import { Menu, Plane, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -73,7 +73,7 @@ export function Navbar({ variant, session = null }: NavbarProps) {
             className="flex items-center gap-2 text-lg font-bold tracking-tight text-white sm:text-xl"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
-              <Car className="h-5 w-5 text-white" aria-hidden />
+              <Plane className="h-5 w-5 text-white" aria-hidden />
             </span>
             {SITE_NAME}
           </Link>
@@ -210,7 +210,7 @@ export function Navbar({ variant, session = null }: NavbarProps) {
           href="/bookings"
           className="flex items-center gap-2 text-lg font-bold text-primary"
         >
-          <Car className="h-6 w-6 text-secondary" aria-hidden />
+          <Plane className="h-6 w-6 text-secondary" aria-hidden />
           {SITE_NAME}
         </Link>
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">

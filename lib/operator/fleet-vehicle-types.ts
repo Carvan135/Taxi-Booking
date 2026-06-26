@@ -1,5 +1,3 @@
-import type { ServiceType } from "@/lib/validations/enums";
-
 /** Fleet categories operators can offer (UK private hire). */
 export const OPERATOR_FLEET_VEHICLE_TYPES = [
   "Saloon",
@@ -21,15 +19,14 @@ const LEGACY_VEHICLE_TYPE_ALIASES: Record<string, OperatorFleetVehicleType> = {
   Van: "MPV",
 };
 
-export const SERVICE_TYPE_FLEET_MATCH: Record<
-  ServiceType,
-  readonly OperatorFleetVehicleType[]
-> = {
-  standard: ["Saloon", "EV"],
-  executive: ["Executive", "Luxury"],
-  van: ["MPV", "8 Seater"],
-  suv: ["Estate"],
-};
+/** Legacy booking service_type values before fleet alignment. */
+const LEGACY_SERVICE_TYPE_TO_VEHICLE: Record<string, OperatorFleetVehicleType> =
+  {
+    standard: "Saloon",
+    executive: "Executive",
+    van: "MPV",
+    suv: "Estate",
+  };
 
 export function serializeFleetVehicleTypes(types: string[]): string {
   return types.join(", ");
@@ -93,14 +90,32 @@ export function primaryFleetVehicleType(
   return types[0] ?? "Saloon";
 }
 
+export function normalizeBookingServiceType(
+  raw: string | null | undefined,
+): OperatorFleetVehicleType {
+  const value = String(raw ?? "").trim();
+  if (!value) return "Saloon";
+
+  if (
+    OPERATOR_FLEET_VEHICLE_TYPES.includes(value as OperatorFleetVehicleType)
+  ) {
+    return value as OperatorFleetVehicleType;
+  }
+
+  return LEGACY_SERVICE_TYPE_TO_VEHICLE[value] ?? "Saloon";
+}
+
+export function formatBookingVehicleType(value: string): string {
+  return normalizeBookingServiceType(value);
+}
+
 export function operatorMatchesServiceType(
   input: {
     fleet_vehicle_types?: string | null;
     vehicle_type?: string | null;
   },
-  serviceType: ServiceType,
+  serviceType: OperatorFleetVehicleType,
 ): boolean {
   const fleet = resolveOperatorFleetTypes(input);
-  const matches = SERVICE_TYPE_FLEET_MATCH[serviceType];
-  return fleet.some((type) => matches.includes(type));
+  return fleet.includes(serviceType);
 }

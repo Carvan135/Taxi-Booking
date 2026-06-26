@@ -1,3 +1,4 @@
+import { formatBookingVehicleType } from "@/lib/operator/fleet-vehicle-types";
 import { SITE_EMAILS } from "@/lib/site/contact";
 
 const NAVY = "#1E3A5F";
@@ -21,13 +22,7 @@ export function formatMoney(amount: number): string {
 }
 
 export function formatServiceType(serviceType: string): string {
-  const labels: Record<string, string> = {
-    standard: "Standard",
-    executive: "Executive",
-    van: "Van",
-    suv: "SUV",
-  };
-  return labels[serviceType] ?? serviceType;
+  return formatBookingVehicleType(serviceType);
 }
 
 export function formatDateDisplay(date: string, time: string): string {

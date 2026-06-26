@@ -46,6 +46,11 @@ export function PaymentStep() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [pricing, setPricing] = useState<BookingPriceBreakdown | null>(null);
+  const [serverPricing, setServerPricing] = useState<{
+    total: number;
+    platform_fee: number;
+    operator_payout: number;
+  } | null>(null);
   const [stripeReady, setStripeReady] = useState(true);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [isLoadingIntent, setIsLoadingIntent] = useState(false);
@@ -149,6 +154,11 @@ export function PaymentStep() {
       setPaymentIntentId(body.payment_intent_id);
       setStripeReady(body.stripe_ready);
       setPricing(quoteToDisplayBreakdown(body.quote));
+      setServerPricing({
+        total: body.total,
+        platform_fee: body.platform_fee,
+        operator_payout: body.operator_payout,
+      });
 
       const stripe = await resolveStripeClient(body.publishable_key);
       setStripeClient(stripe);
@@ -164,6 +174,8 @@ export function PaymentStep() {
         trip_fingerprint: fingerprint,
         operator_id: operator.operator_id,
         total: body.total,
+        platform_fee: body.platform_fee,
+        operator_payout: body.operator_payout,
         created_at: new Date().toISOString(),
       });
 
@@ -192,6 +204,7 @@ export function PaymentStep() {
     setClientSecret(null);
     setPaymentIntentId(null);
     setPricing(null);
+    setServerPricing(null);
     setIntentGeneration((n) => n + 1);
   }, []);
 
@@ -310,6 +323,7 @@ export function PaymentStep() {
             <PaymentCheckoutForm
               trip={trip}
               pricing={pricing!}
+              serverPricing={serverPricing ?? undefined}
               paymentIntentId={paymentIntentId!}
               profile={profile}
               isAuthenticated={isAuthenticated}

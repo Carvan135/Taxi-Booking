@@ -24,13 +24,6 @@ import {
 import { formatFleetVehicleTypesDisplay } from "@/lib/operator/fleet-vehicle-types";
 import type { OperatorListItem } from "@/types";
 
-const SERVICE_LABELS: Record<TaxibookBookingSession["service_type"], string> = {
-  standard: "Standard",
-  executive: "Executive",
-  van: "Van",
-  suv: "SUV",
-};
-
 function formatGbp(amount: number): string {
   return `£${amount.toFixed(2)}`;
 }
@@ -263,8 +256,8 @@ function TripSummaryBar({
           value={`${trip.passengers} ${trip.passengers === 1 ? "passenger" : "passengers"}`}
         />
         <SummaryItem
-          label="Service type"
-          value={SERVICE_LABELS[trip.service_type]}
+          label="Vehicle type"
+          value={trip.service_type}
           className="sm:col-span-2"
         />
         {trip.booking_type === "return" && trip.return_date && trip.return_time ? (
@@ -412,10 +405,10 @@ function EmptyOperatorsState() {
   return (
     <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 px-6 py-10 text-center">
       <p className="text-base font-medium text-content">
-        No operators available for this service type
+        No operators available for this vehicle type
       </p>
       <p className="mt-2 text-sm text-content/60">
-        Try a different service type or adjust your journey details.
+        Try a different vehicle type or adjust your journey details.
       </p>
       <Link
         href="/book"

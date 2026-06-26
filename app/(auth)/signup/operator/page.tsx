@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SITE_NAME } from "@/lib/site/contact";
-import { ArrowLeft, Car, Info, Upload } from "lucide-react";
+import { ArrowLeft, Info, Plane, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -43,7 +43,7 @@ function OperatorSignupBanner() {
         </Link>
       </div>
       <div className="mx-auto flex max-w-2xl flex-col items-center px-4">
-        <Car
+        <Plane
           className="h-10 w-10 text-white"
           strokeWidth={1.5}
           aria-hidden

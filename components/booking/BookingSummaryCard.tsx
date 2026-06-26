@@ -7,15 +7,9 @@ import {
   tripDropoffLabel,
   tripPickupLabel,
 } from "@/lib/booking/trip-display";
+import { formatBookingVehicleType } from "@/lib/operator/fleet-vehicle-types";
 import type { TaxibookBookingSession } from "@/lib/booking/session";
 import type { SelectedOperatorSession } from "@/lib/booking/session";
-
-const SERVICE_LABELS: Record<TaxibookBookingSession["service_type"], string> = {
-  standard: "Standard",
-  executive: "Executive",
-  van: "Van",
-  suv: "SUV",
-};
 
 type BookingSummaryCardProps = {
   trip: TaxibookBookingSession;
@@ -62,8 +56,8 @@ export function BookingSummaryCard({
         />
         <SummaryRow
           icon={Car}
-          label="Service type"
-          value={SERVICE_LABELS[trip.service_type]}
+          label="Vehicle type"
+          value={formatBookingVehicleType(trip.service_type)}
         />
         <SummaryRow
           icon={Luggage}

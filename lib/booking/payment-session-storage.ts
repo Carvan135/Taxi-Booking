@@ -6,6 +6,8 @@ export type StoredPaymentSession = {
   trip_fingerprint: string;
   operator_id: string;
   total: number;
+  platform_fee: number;
+  operator_payout: number;
   created_at: string;
 };
 

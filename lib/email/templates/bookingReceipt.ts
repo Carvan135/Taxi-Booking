@@ -30,7 +30,7 @@ export function bookingReceiptEmail(
     },
     { label: "Passengers", value: String(data.passengers) },
     {
-      label: "Service type",
+      label: "Vehicle type",
       value: escapeHtml(formatServiceType(data.service_type)),
     },
     { label: "Operator", value: escapeHtml(data.operator_name) },

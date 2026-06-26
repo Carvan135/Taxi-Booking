@@ -19,7 +19,7 @@ import { calculateTripDistance } from "@/lib/booking/route-calculator";
 import type { BookingPlace } from "@/lib/booking/booking-session-types";
 import { geocode, type GeoPlace } from "@/lib/maps/geoapify-client";
 import { MAX_BOOKING_LUGGAGE } from "@/lib/booking/luggage-display";
-import { SERVICE_TYPES } from "@/lib/validations/enums";
+import { OPERATOR_FLEET_VEHICLE_TYPES } from "@/lib/operator/fleet-vehicle-types";
 import {
   BOOK_TRIP_INPUT_CLASS,
   BOOK_TRIP_PRIMARY_ACTION_CLASS,
@@ -49,7 +49,7 @@ const defaultValues: BookingFormValues = {
   pickup_date: "",
   pickup_time: "",
   passengers: 1,
-  service_type: "standard",
+  service_type: "Saloon",
   luggage: 0,
   notes: "",
   return_date: "",
@@ -58,13 +58,6 @@ const defaultValues: BookingFormValues = {
 
 const CARD_CLASS =
   "rounded-2xl border border-slate-100 bg-white p-5 shadow-xl shadow-slate-900/10 sm:p-7 lg:p-8";
-
-const SERVICE_TYPE_LABELS: Record<(typeof SERVICE_TYPES)[number], string> = {
-  standard: "Standard",
-  executive: "Executive",
-  van: "Van",
-  suv: "SUV",
-};
 
 function todayIsoDate(): string {
   const now = new Date();
@@ -453,7 +446,7 @@ export function BookingJourneyForm({ variant = "page" }: BookingJourneyFormProps
               className="flex items-center gap-2 text-sm font-medium text-content"
             >
               <Car className="h-4 w-4 shrink-0 text-secondary" aria-hidden />
-              Service type
+              Vehicle type
             </label>
             <select
               id={`${idPrefix}-service-type`}
@@ -461,9 +454,9 @@ export function BookingJourneyForm({ variant = "page" }: BookingJourneyFormProps
               {...register("service_type")}
               aria-invalid={errors.service_type ? "true" : "false"}
             >
-              {SERVICE_TYPES.map((type) => (
+              {OPERATOR_FLEET_VEHICLE_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {SERVICE_TYPE_LABELS[type]}
+                  {type}
                 </option>
               ))}
             </select>

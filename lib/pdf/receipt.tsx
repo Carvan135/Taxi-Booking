@@ -9,6 +9,7 @@ import type {
   BookingEmailData,
   BookingEmailReturnLeg,
 } from "@/lib/email/types";
+import { formatBookingVehicleType } from "@/lib/operator/fleet-vehicle-types";
 
 const NAVY = "#1E3A5F";
 const MUTED = "#6B7280";
@@ -184,13 +185,7 @@ function formatMoney(amount: number): string {
 }
 
 function formatServiceType(serviceType: string): string {
-  const labels: Record<string, string> = {
-    standard: "Standard",
-    executive: "Executive",
-    van: "Van",
-    suv: "SUV",
-  };
-  return labels[serviceType] ?? serviceType;
+  return formatBookingVehicleType(serviceType);
 }
 
 function formatIssuedDate(iso: string): string {

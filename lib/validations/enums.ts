@@ -1,4 +1,7 @@
-export const SERVICE_TYPES = ["standard", "executive", "van", "suv"] as const;
+export {
+  OPERATOR_FLEET_VEHICLE_TYPES as SERVICE_TYPES,
+  type OperatorFleetVehicleType as ServiceType,
+} from "@/lib/operator/fleet-vehicle-types";
 export const BOOKING_TYPES = ["one_way", "return"] as const;
 export const BOOKING_LEGS = ["outbound", "return"] as const;
 
@@ -59,7 +62,6 @@ export const OPERATOR_STATUS = {
 } as const;
 export const USER_ROLES = ["customer", "operator", "admin"] as const;
 
-export type ServiceType = (typeof SERVICE_TYPES)[number];
 export type BookingType = (typeof BOOKING_TYPES)[number];
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export type RuleType = (typeof RULE_TYPES)[number];

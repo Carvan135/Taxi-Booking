@@ -1,4 +1,5 @@
 import type { TaxibookBookingSession } from "@/lib/booking/booking-session-types";
+import { normalizeBookingServiceType } from "@/lib/operator/fleet-vehicle-types";
 import { bookingData, guestSession } from "@/lib/guest/session";
 
 export type {
@@ -84,7 +85,15 @@ export function patchTaxibookBooking(
 }
 
 export function loadTaxibookBooking(): TaxibookBookingSession | null {
-  return bookingData.get();
+  const stored = bookingData.get();
+  if (!stored) return null;
+
+  const service_type = normalizeBookingServiceType(stored.service_type);
+  if (service_type === stored.service_type) return stored;
+
+  const next = { ...stored, service_type };
+  saveTaxibookBooking(next);
+  return next;
 }
 
 export function clearTaxibookBooking(): void {
