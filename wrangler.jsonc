@@ -1,6 +1,9 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "taxi-booking",
+  // Preserve dashboard Variables on deploy (secrets are always preserved).
+  // Without this, wrangler deploy replaces all vars with wrangler.jsonc only — wiping manual entries.
+  "keep_vars": true,
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-04-01",
   "compatibility_flags": [
