@@ -28,7 +28,7 @@ export function Footer() {
 
   return (
     <footer className="border-t border-slate-800 bg-slate-950 text-slate-300">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
+      <div className="site-footer-inner mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5 lg:gap-8">
           <div className="sm:col-span-2 lg:col-span-1">
             <Link

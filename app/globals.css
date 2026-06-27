@@ -33,20 +33,37 @@ body {
   }
 }
 
-/* Keep Tawk chat bubble above the cookie banner and reduce overlap clutter */
+/* Tawk chat bubble — reserve space so footer controls (e.g. Admin) stay clickable */
+:root {
+  --tawk-widget-size: 64px;
+  --tawk-widget-margin: 20px;
+  --tawk-safe-inset-x: calc(var(--tawk-widget-size) + var(--tawk-widget-margin));
+  --tawk-safe-inset-bottom: calc(
+    var(--tawk-widget-size) + var(--tawk-widget-margin) +
+      env(safe-area-inset-bottom, 0px)
+  );
+}
+
 #tawk-bubble-container,
 .tawk-min-container {
   z-index: 80 !important;
+  right: max(1rem, env(safe-area-inset-right, 0px)) !important;
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.tawk-widget-active .site-footer-inner {
+  padding-bottom: calc(3rem + var(--tawk-safe-inset-bottom));
+  padding-right: max(1.5rem, var(--tawk-safe-inset-x));
 }
 
 body:has([aria-labelledby="cookie-banner-title"]) #tawk-bubble-container,
 body:has([aria-labelledby="cookie-banner-title"]) .tawk-min-container {
-  bottom: 6.5rem !important;
+  bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 @media (min-width: 640px) {
   body:has([aria-labelledby="cookie-banner-title"]) #tawk-bubble-container,
   body:has([aria-labelledby="cookie-banner-title"]) .tawk-min-container {
-    bottom: 5.5rem !important;
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
