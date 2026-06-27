@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ClearStripeReturnQuery } from "@/components/operator/ClearStripeReturnQuery";
 import {
   FinancesTabNav,
@@ -116,6 +117,13 @@ export default async function OperatorFinancesPage({
     .eq("user_id", user?.id ?? "")
     .maybeSingle();
 
+  const showOnboardingTab =
+    operator?.status === "approved" && operator.stripe_payouts_enabled !== true;
+
+  if (tab === "onboarding" && !showOnboardingTab) {
+    redirect("/operator/finances?tab=earnings");
+  }
+
   let earningsRows: EarningsRow[] = [];
   let summary = {
     availableTotal: 0,
@@ -201,7 +209,11 @@ export default async function OperatorFinancesPage({
         </div>
       ) : null}
 
-      <FinancesTabNav active={tab} earningsQuery={earningsQuery} />
+      <FinancesTabNav
+        active={tab}
+        earningsQuery={earningsQuery}
+        showOnboardingTab={showOnboardingTab}
+      />
 
       <div className="mt-6 rounded-b-xl border border-t-0 border-slate-200 bg-white p-5 sm:p-6">
         {tab === "onboarding" ? (
@@ -210,11 +222,10 @@ export default async function OperatorFinancesPage({
               id="fin-onboarding-heading"
               className="text-lg font-semibold text-primary"
             >
-              Payout onboarding
+              Payout setup
             </h2>
             <p className="mt-1 text-sm text-content/70">
-              Each step must complete before you can receive bank payouts for
-              completed trips.
+              Connect Stripe to receive bank payouts for completed trips.
             </p>
             <div className="mt-5">
               <OperatorOnboardingPanel />

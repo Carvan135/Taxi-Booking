@@ -5,9 +5,14 @@ export type FinancesTab = "onboarding" | "earnings" | "payouts";
 type FinancesTabNavProps = {
   active: FinancesTab;
   earningsQuery: { from: string; to: string };
+  showOnboardingTab?: boolean;
 };
 
-export function FinancesTabNav({ active, earningsQuery }: FinancesTabNavProps) {
+export function FinancesTabNav({
+  active,
+  earningsQuery,
+  showOnboardingTab = true,
+}: FinancesTabNavProps) {
   const earningsParams = new URLSearchParams();
   earningsParams.set("tab", "earnings");
   earningsParams.set("from", earningsQuery.from);
@@ -20,8 +25,15 @@ export function FinancesTabNav({ active, earningsQuery }: FinancesTabNavProps) {
       href: `/operator/finances?${earningsParams.toString()}`,
     },
     { id: "payouts", label: "Payouts", href: "/operator/finances?tab=payouts" },
-    { id: "onboarding", label: "Onboarding", href: "/operator/finances?tab=onboarding" },
   ];
+
+  if (showOnboardingTab) {
+    tabs.push({
+      id: "onboarding",
+      label: "Payout setup",
+      href: "/operator/finances?tab=onboarding",
+    });
+  }
 
   return (
     <nav
