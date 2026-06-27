@@ -111,7 +111,7 @@ If the app is deployed to Cloudflare Workers (for example `*.workers.dev`), **ev
    - **`TWILIO_ACCOUNT_SID`**, **`TWILIO_AUTH_TOKEN`**, **`TWILIO_PHONE_NUMBER`** (SMS pickup reminders)
    - **`CRON_SECRET`** (runtime secret — required in production; used by Cloudflare Cron Triggers)
 2. Redeploy after changing secrets (`npm run cf:build-and-deploy`).
-3. Verify: `GET /api/health` should show `"geoapifyConfigured": true`, `"emailConfigured": true`, and `"cronSecretConfigured": true` when set.
+3. Verify: `GET /api/health` should show `"googleMapsConfigured": true`, `"geoapifyConfigured": true`, `"emailConfigured": true`, and `"cronSecretConfigured": true` when set.
 4. **Symptom:** “Application error: a server-side exception has occurred” on `/admin/dashboard` or after sign-in usually means a required secret (often `SUPABASE_SERVICE_ROLE_KEY`) was missing at runtime.
 
 See [Scheduled jobs (cron)](#scheduled-jobs-cron) below.

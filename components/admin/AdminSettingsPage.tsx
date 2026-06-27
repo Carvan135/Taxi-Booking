@@ -39,7 +39,7 @@ const KEYS = {
 } as const;
 
 const DEFAULTS = {
-  commission: 10,
+  commission: 15,
   payoutDelay: 48,
   payoutEarly: true,
   autoCompleteHours: 24,

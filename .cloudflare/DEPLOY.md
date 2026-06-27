@@ -50,13 +50,14 @@ Use `npm run cf:deploy` (includes `--keep-vars`) so dashboard runtime vars are n
 
 After deploy, `GET /api/health` should show `resendApiKeyConfigured: true`, `resendFromEmailConfigured: true`, and `emailConfigured: true`.
 
-Required for address autocomplete / geocoding:
+Required for address autocomplete and driving-distance quotes:
 
 | Variable | Notes |
 |----------|--------|
-| `GEOAPIFY_API_KEY` | Server-side Geoapify key (recommended). Use a key **without** HTTP referrer restrictions, or Geoapify will reject Worker `fetch` calls. |
+| `GOOGLE_MAPS_API_KEY` | Server-side Google Maps Platform key with **Places API (New)** enabled. Restrict to Places API; use IP/Worker restrictions suitable for server-side calls. |
+| `GEOAPIFY_API_KEY` | Server-side Geoapify key for **routing only** (`/api/geoapify/route`). Use a key **without** HTTP referrer restrictions, or Geoapify will reject Worker `fetch` calls. |
 
-After deploy, check `GET /api/health` — `geoapifyConfigured` must be `true`. If autocomplete returns `503` with `geoapify_not_configured`, add the variable and redeploy.
+After deploy, check `GET /api/health` — `googleMapsConfigured` and `geoapifyConfigured` should be `true`. If autocomplete returns `503` with `google_maps_not_configured`, add `GOOGLE_MAPS_API_KEY` and redeploy.
 
 ### Stripe (payment step)
 

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 
-const DEFAULT_COMMISSION_PERCENT = 10;
+const DEFAULT_COMMISSION_PERCENT = 15;
 const DEFAULT_PAYOUT_DELAY_HOURS = 24;
 const DEFAULT_AUTO_COMPLETE_HOURS = 24;
 const DEFAULT_AUTO_COMPLETE_WARNING_HOURS = 2;

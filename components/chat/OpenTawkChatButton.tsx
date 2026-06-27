@@ -6,6 +6,7 @@ import { useOptionalCookieConsent } from "@/components/cookies/CookieConsentProv
 import { SITE_EMAILS } from "@/lib/site/contact";
 
 type TawkApi = {
+  onLoad?: () => void;
   maximize?: () => void;
   toggle?: () => void;
 };

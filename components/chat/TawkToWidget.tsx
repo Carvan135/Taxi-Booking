@@ -9,8 +9,6 @@ const TAWK_SCRIPT_SRC =
 
 type TawkApi = {
   onLoad?: () => void;
-  maximize?: () => void;
-  toggle?: () => void;
 };
 
 declare global {

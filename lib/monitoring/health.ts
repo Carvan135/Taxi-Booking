@@ -6,6 +6,7 @@ import {
 } from "@/lib/email/config";
 import { getRuntimeEnv } from "@/lib/env/runtime";
 import { isGeoapifyConfigured } from "@/lib/env/geoapify";
+import { isGoogleMapsConfigured } from "@/lib/env/google-maps";
 import { isStripePublishableKeyConfigured } from "@/lib/stripe/publishable-key";
 import { isSmsConfigured } from "@/lib/sms/config";
 import { hasServiceRoleConfig, isSupabaseServiceRoleKeyValid } from "@/lib/supabase/admin";
@@ -18,6 +19,7 @@ export type HealthChecks = {
   supabaseServiceRoleConfigured: boolean;
   supabaseServiceRoleKeyValid: boolean;
   geoapifyConfigured: boolean;
+  googleMapsConfigured: boolean;
   emailConfigured: boolean;
   resendApiKeyConfigured: boolean;
   resendFromEmailConfigured: boolean;
@@ -48,6 +50,7 @@ function buildChecks(): HealthChecks {
     supabaseServiceRoleConfigured: hasServiceRoleConfig(),
     supabaseServiceRoleKeyValid: isSupabaseServiceRoleKeyValid(),
     geoapifyConfigured: isGeoapifyConfigured(),
+    googleMapsConfigured: isGoogleMapsConfigured(),
     emailConfigured: isEmailConfigured(),
     resendApiKeyConfigured: isResendApiKeyConfigured(),
     resendFromEmailConfigured: isResendFromEmailConfigured(),
@@ -67,10 +70,11 @@ function deriveStatus(checks: HealthChecks, readiness: boolean): HealthStatus {
     const optionalConfigured = [
       checks.emailConfigured,
       checks.geoapifyConfigured,
+      checks.googleMapsConfigured,
       checks.stripePublishableKeyConfigured,
     ].filter(Boolean).length;
 
-    if (optionalConfigured < 2) return "degraded";
+    if (optionalConfigured < 3) return "degraded";
     return "healthy";
   }
 
