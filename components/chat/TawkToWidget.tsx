@@ -7,17 +7,6 @@ import { useOptionalCookieConsent } from "@/components/cookies/CookieConsentProv
 const TAWK_SCRIPT_SRC =
   "https://embed.tawk.to/6a27fccb06db241c2bc34e0d/1jqm36umk";
 
-type TawkApi = {
-  onLoad?: () => void;
-};
-
-declare global {
-  interface Window {
-    Tawk_API?: TawkApi;
-    Tawk_LoadStart?: Date;
-  }
-}
-
 function removeTawkWidget(): void {
   document.body.classList.remove("tawk-widget-active");
   document.querySelector('script[src*="tawk.to"]')?.remove();

@@ -5,19 +5,6 @@ import { Button } from "@/components/ui/Button";
 import { useOptionalCookieConsent } from "@/components/cookies/CookieConsentProvider";
 import { SITE_EMAILS } from "@/lib/site/contact";
 
-type TawkApi = {
-  onLoad?: () => void;
-  maximize?: () => void;
-  toggle?: () => void;
-};
-
-declare global {
-  interface Window {
-    Tawk_API?: TawkApi;
-    Tawk_LoadStart?: Date;
-  }
-}
-
 function openTawkChat() {
   if (typeof window === "undefined") return;
   const api = window.Tawk_API;
