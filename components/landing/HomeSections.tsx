@@ -84,7 +84,7 @@ export function HeroSection() {
           <p className="mx-auto mt-4 max-w-2xl text-pretty text-base text-slate-300 sm:text-lg">
             Compare trusted operators and get the best price instantly.
           </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm text-slate-200">
+          {/* <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm text-slate-200">
             <span className="flex gap-0.5 text-amber-400" aria-label="Rated 4.8 out of 5">
               {[1, 2, 3, 4, 5].map((i) => (
                 <span key={i} aria-hidden>
@@ -96,7 +96,7 @@ export function HeroSection() {
               Rated <strong className="font-semibold text-white">4.8/5</strong>{" "}
               from 5,000+ customers
             </span>
-          </div>
+          </div> */}
         </div>
 
         <div className="relative z-10 mx-auto mt-10 max-w-3xl lg:mt-12">
