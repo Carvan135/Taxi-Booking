@@ -5,12 +5,6 @@ export type GeoPlace = {
   isAirport: boolean;
 };
 
-export type PlaceSuggestion = {
-  label: string;
-  placeId: string;
-  isAirport: boolean;
-};
-
 export type RouteResult = {
   distanceMiles: number;
   durationMinutes: number;

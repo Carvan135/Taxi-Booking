@@ -50,14 +50,13 @@ Use `npm run cf:deploy` (includes `--keep-vars`) so dashboard runtime vars are n
 
 After deploy, `GET /api/health` should show `resendApiKeyConfigured: true`, `resendFromEmailConfigured: true`, and `emailConfigured: true`.
 
-Required for address autocomplete and driving-distance quotes:
+Required for address autocomplete / geocoding and driving-distance quotes:
 
 | Variable | Notes |
 |----------|--------|
-| `GOOGLE_MAPS_API_KEY` | Server-side Google Maps Platform key with **Places API (New)** enabled. Restrict to Places API; use IP/Worker restrictions suitable for server-side calls. |
-| `GEOAPIFY_API_KEY` | Server-side Geoapify key for **routing only** (`/api/geoapify/route`). Use a key **without** HTTP referrer restrictions, or Geoapify will reject Worker `fetch` calls. |
+| `GEOAPIFY_API_KEY` | Server-side Geoapify key (recommended). Use a key **without** HTTP referrer restrictions, or Geoapify will reject Worker `fetch` calls. |
 
-After deploy, check `GET /api/health` — `googleMapsConfigured` and `geoapifyConfigured` should be `true`. If autocomplete returns `503` with `google_maps_not_configured`, add `GOOGLE_MAPS_API_KEY` and redeploy.
+After deploy, check `GET /api/health` — `geoapifyConfigured` must be `true`. If autocomplete returns `503` with `geoapify_not_configured`, add the variable and redeploy.
 
 ### Stripe (payment step)
 
@@ -98,7 +97,7 @@ After deploy, verify:
 | `CRON_SECRET` | Runtime **secret** | Required in production. Cloudflare Cron Triggers call `/api/cron/auto-complete`, `/api/cron/reconcile-payments`, and `/api/cron/sms-reminders` with `Authorization: Bearer <secret>`. |
 | `TWILIO_ACCOUNT_SID` | Runtime secret | SMS pickup reminders |
 | `TWILIO_AUTH_TOKEN` | Runtime secret | SMS pickup reminders |
-| `TWILIO_PHONE_NUMBER` | Runtime variable | E.164 sender number |
+| `TWILIO_PHONE_NUMBER` | Runtime variable | E.164 sender number (e.g. `+447700100107`) |
 | `RESEND_*` | Runtime | Auto-complete warning + receipt emails |
 
 Cron schedules are defined in `wrangler.jsonc` (`*/15 * * * *` — every 15 minutes). Entry point: `cloudflare-worker.ts` (wraps OpenNext + `scheduled` handler). The reconcile-payments job syncs unpaid bookings that already have a Stripe PaymentIntent id (safety net when webhooks lag).

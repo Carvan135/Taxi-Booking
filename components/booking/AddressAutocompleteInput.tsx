@@ -9,12 +9,7 @@ import {
   useState,
 } from "react";
 import { BOOK_TRIP_INPUT_CLASS } from "@/components/booking/booking-form-styles";
-import {
-  autocomplete,
-  getPlaceDetails,
-  type GeoPlace,
-  type PlaceSuggestion,
-} from "@/lib/maps/geoapify-client";
+import { autocomplete, type GeoPlace } from "@/lib/maps/geoapify-client";
 
 const DEBOUNCE_MS = 400;
 
@@ -30,13 +25,6 @@ type AddressAutocompleteInputProps = {
   disabled?: boolean;
 };
 
-function createSessionToken(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
 export function AddressAutocompleteInput({
   id,
   label,
@@ -50,17 +38,10 @@ export function AddressAutocompleteInput({
 }: AddressAutocompleteInputProps) {
   const listId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
-  const sessionTokenRef = useRef<string>(createSessionToken());
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<GeoPlace[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isResolving, setIsResolving] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [resolveError, setResolveError] = useState<string | null>(null);
-
-  const resetSession = useCallback(() => {
-    sessionTokenRef.current = createSessionToken();
-  }, []);
 
   useEffect(() => {
     const query = value.trim();
@@ -79,7 +60,7 @@ export function AddressAutocompleteInput({
 
     setIsLoading(true);
     const timer = window.setTimeout(() => {
-      void autocomplete(query, sessionTokenRef.current)
+      void autocomplete(query)
         .then((results) => {
           setSuggestions(results);
           setIsOpen(results.length > 0);
@@ -110,38 +91,17 @@ export function AddressAutocompleteInput({
   }, []);
 
   const handleSelect = useCallback(
-    async (suggestion: PlaceSuggestion) => {
-      setResolveError(null);
-      setIsResolving(true);
+    (place: GeoPlace) => {
+      onValueChange(place.label);
+      onPlaceSelect(place);
+      setSuggestions([]);
       setIsOpen(false);
-
-      try {
-        const place = await getPlaceDetails(
-          suggestion.placeId,
-          sessionTokenRef.current,
-        );
-        resetSession();
-
-        if (!place) {
-          setResolveError("Could not load that address. Try another suggestion.");
-          return;
-        }
-
-        onValueChange(place.label);
-        onPlaceSelect(place);
-        setSuggestions([]);
-      } catch {
-        setResolveError("Could not load that address. Try again.");
-      } finally {
-        setIsResolving(false);
-      }
     },
-    [onPlaceSelect, onValueChange, resetSession],
+    [onPlaceSelect, onValueChange],
   );
 
   const handleInputChange = (next: string) => {
     onValueChange(next);
-    setResolveError(null);
     if (selectedPlace && next !== selectedPlace.label) {
       onPlaceSelect(null);
     }
@@ -158,14 +118,11 @@ export function AddressAutocompleteInput({
       setActiveIndex((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
     } else if (event.key === "Enter" && activeIndex >= 0) {
       event.preventDefault();
-      void handleSelect(suggestions[activeIndex]!);
+      handleSelect(suggestions[activeIndex]!);
     } else if (event.key === "Escape") {
       setIsOpen(false);
     }
   };
-
-  const displayError = error ?? resolveError ?? undefined;
-  const showSpinner = isLoading || isResolving;
 
   return (
     <div ref={containerRef} className="relative">
@@ -177,14 +134,14 @@ export function AddressAutocompleteInput({
           id={id}
           type="text"
           value={value}
-          disabled={disabled || isResolving}
+          disabled={disabled}
           placeholder={placeholder}
           autoComplete="off"
           role="combobox"
           aria-expanded={isOpen}
           aria-controls={listId}
           aria-autocomplete="list"
-          aria-invalid={displayError ? "true" : "false"}
+          aria-invalid={error ? "true" : "false"}
           className={BOOK_TRIP_INPUT_CLASS}
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={() => {
@@ -192,7 +149,7 @@ export function AddressAutocompleteInput({
           }}
           onKeyDown={handleKeyDown}
         />
-        {showSpinner ? (
+        {isLoading ? (
           <Loader2
             className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-content/40"
             aria-hidden
@@ -201,39 +158,38 @@ export function AddressAutocompleteInput({
       </div>
 
       {isOpen && suggestions.length > 0 ? (
-        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-          <ul id={listId} role="listbox" className="max-h-56 overflow-auto py-1">
-            {suggestions.map((suggestion, index) => (
-              <li
-                key={`${suggestion.placeId}-${index}`}
-                role="option"
-                aria-selected={index === activeIndex}
+        <ul
+          id={listId}
+          role="listbox"
+          className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+        >
+          {suggestions.map((place, index) => (
+            <li
+              key={`${place.lat}-${place.lng}-${index}`}
+              role="option"
+              aria-selected={index === activeIndex}
+            >
+              <button
+                type="button"
+                className={`flex w-full flex-col px-3 py-2.5 text-left text-sm transition hover:bg-sky-50 ${
+                  index === activeIndex ? "bg-sky-50" : ""
+                }`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSelect(place)}
               >
-                <button
-                  type="button"
-                  className={`flex w-full flex-col px-3 py-2.5 text-left text-sm transition hover:bg-sky-50 ${
-                    index === activeIndex ? "bg-sky-50" : ""
-                  }`}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => void handleSelect(suggestion)}
-                >
-                  <span className="font-medium text-content">{suggestion.label}</span>
-                  {suggestion.isAirport ? (
-                    <span className="mt-0.5 text-xs font-medium text-secondary">Airport</span>
-                  ) : null}
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="border-t border-slate-100 px-3 py-1.5 text-[10px] text-slate-400">
-            Powered by Google
-          </p>
-        </div>
+                <span className="font-medium text-content">{place.label}</span>
+                {place.isAirport ? (
+                  <span className="mt-0.5 text-xs font-medium text-secondary">Airport</span>
+                ) : null}
+              </button>
+            </li>
+          ))}
+        </ul>
       ) : null}
 
-      {displayError ? (
+      {error ? (
         <p className="mt-1.5 text-sm text-red-600" role="alert">
-          {displayError}
+          {error}
         </p>
       ) : null}
     </div>

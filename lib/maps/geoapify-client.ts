@@ -1,5 +1,4 @@
-export type { GeoPlace, PlaceSuggestion, RouteResult } from "@/lib/maps/types";
-export { autocomplete, geocode, getPlaceDetails } from "@/lib/maps/places-client";
+export type { GeoPlace, RouteResult } from "@/lib/maps/types";
 
 import type { GeoPlace, RouteResult } from "@/lib/maps/types";
 
@@ -9,6 +8,24 @@ async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit): Promi
     throw new Error(`Geo request failed (${res.status})`);
   }
   return (await res.json()) as T;
+}
+
+export async function autocomplete(query: string): Promise<GeoPlace[]> {
+  const text = query.trim();
+  if (text.length < 2) return [];
+  const url = new URL("/api/geoapify/autocomplete", window.location.origin);
+  url.searchParams.set("text", text);
+  const data = await fetchJson<{ places: GeoPlace[] }>(url);
+  return data.places ?? [];
+}
+
+export async function geocode(text: string): Promise<GeoPlace | null> {
+  const query = text.trim();
+  if (query.length < 3) return null;
+  const url = new URL("/api/geoapify/geocode", window.location.origin);
+  url.searchParams.set("text", query);
+  const data = await fetchJson<{ place: GeoPlace | null }>(url);
+  return data.place ?? null;
 }
 
 export async function route(

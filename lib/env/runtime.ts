@@ -12,8 +12,6 @@ function readStaticProcessEnv(name: string): string | undefined {
       return process.env.EMAIL_FROM?.trim();
     case "GEOAPIFY_API_KEY":
       return process.env.GEOAPIFY_API_KEY?.trim();
-    case "GOOGLE_MAPS_API_KEY":
-      return process.env.GOOGLE_MAPS_API_KEY?.trim();
     case "RESEND_API_KEY":
       return process.env.RESEND_API_KEY?.trim();
     case "RESEND_FROM_EMAIL":
