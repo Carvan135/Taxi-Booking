@@ -97,7 +97,8 @@ export default function ConfirmationContent() {
 
     setLoadState("loading");
     const storedGuest = guestSession.get();
-    const email = storedGuest?.email;
+    const email =
+      storedGuest?.email ?? confirmationSnapshot?.customer_email ?? undefined;
     if (email) setGuestEmail(email);
 
     const params = new URLSearchParams({ ref: refParam });
@@ -122,7 +123,7 @@ export default function ConfirmationContent() {
       setBooking(null);
       setLoadState("error");
     }
-  }, [refParam]);
+  }, [refParam, confirmationSnapshot?.customer_email]);
 
   useEffect(() => {
     void fetchBooking();

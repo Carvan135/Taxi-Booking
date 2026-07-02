@@ -173,7 +173,7 @@ export function PaymentCheckoutForm({
 
         if (result.ok) {
           const reference = result.booking_reference ?? "";
-          if (!isAuthenticated && result.booking_id) {
+          if (result.booking_id) {
             saveTaxibookGuestSession({
               bookingId: result.booking_id,
               email: customer.customer_email,
@@ -186,6 +186,7 @@ export function PaymentCheckoutForm({
             reference,
             total: pricing.total,
             trip,
+            customer_email: customer.customer_email,
           });
           clearTaxibookBooking();
           clearPaymentSession();

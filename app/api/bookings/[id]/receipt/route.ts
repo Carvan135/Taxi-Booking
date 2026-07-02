@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { verifyBookingReferenceAccess } from "@/lib/booking/guest-booking-access";
 import { generateReceiptBuffer } from "@/lib/pdf/generateReceipt";
 import { loadReceiptBookingById } from "@/lib/pdf/load-receipt-booking";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
@@ -49,26 +50,18 @@ export async function GET(req: Request, context: RouteContext) {
       data: { user },
     } = await authClient.auth.getUser();
 
-    if (user) {
-      if (accessRow.customer_id && accessRow.customer_id !== user.id) {
-        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-      }
-    } else if (accessRow.customer_id) {
-      return NextResponse.json(
-        { error: "Sign in to download this receipt" },
-        { status: 403 },
-      );
-    } else if (email) {
-      if (
-        accessRow.customer_email.toLowerCase() !== email.toLowerCase()
-      ) {
-        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-      }
-    } else {
-      return NextResponse.json(
-        { error: "Email is required to download this receipt" },
-        { status: 403 },
-      );
+    const access = verifyBookingReferenceAccess(accessRow, {
+      userId: user?.id ?? null,
+      email,
+    });
+    if (!access.ok) {
+      const message =
+        access.error === "Sign in to view this booking"
+          ? "Sign in to download this receipt"
+          : access.error === "Email is required to view this booking"
+            ? "Email is required to download this receipt"
+            : access.error;
+      return NextResponse.json({ error: message }, { status: access.status });
     }
 
     const receiptBooking = await loadReceiptBookingById(supabase, bookingId);

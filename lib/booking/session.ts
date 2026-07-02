@@ -18,6 +18,7 @@ export type ConfirmationSnapshot = {
   reference: string;
   total: number;
   trip: TaxibookBookingSession;
+  customer_email?: string;
 };
 
 export function saveConfirmationSnapshot(data: ConfirmationSnapshot): void {

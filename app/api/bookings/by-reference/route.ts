@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { verifyBookingReferenceAccess } from "@/lib/booking/guest-booking-access";
 import { mapOperatorJoin } from "@/lib/booking/map-customer-booking-row";
 import { OPERATOR_FOR_CUSTOMER_BOOKING_SELECT } from "@/lib/booking/operator-booking-select";
 import { reconcilePaymentIntentById } from "@/lib/stripe/reconcile-payment-intent";
@@ -114,24 +115,12 @@ export async function GET(req: Request) {
       data: { user },
     } = await authClient.auth.getUser();
 
-    if (user) {
-      if (row.customer_id && row.customer_id !== user.id) {
-        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-      }
-    } else if (row.customer_id) {
-      return NextResponse.json(
-        { error: "Sign in to view this booking" },
-        { status: 403 },
-      );
-    } else if (email) {
-      if (row.customer_email.toLowerCase() !== email.toLowerCase()) {
-        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-      }
-    } else {
-      return NextResponse.json(
-        { error: "Email is required to view this booking" },
-        { status: 403 },
-      );
+    const access = verifyBookingReferenceAccess(row, {
+      userId: user?.id ?? null,
+      email,
+    });
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     let legs = [row];
