@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { BookingCompletionActions } from "@/components/booking/BookingCompletionActions";
+import { CustomerTripStatusBadge, CustomerTripStatusBanner } from "@/components/booking/CustomerTripStatusBanner";
 import { BookingReviewModal } from "@/components/booking/BookingReviewModal";
 import { BookingStatusBadge } from "@/components/booking/BookingStatusBadge";
 import { OperatorContactModal } from "@/components/booking/OperatorContactModal";
@@ -16,7 +17,6 @@ import {
   canResumeBookingPayment,
   isBookingDisputed,
   needsCustomerCompletionAction,
-  showCustomerJourneyGreeting,
 } from "@/lib/booking/customer-booking-ui";
 import { canCustomerReviewBooking } from "@/lib/booking/customer-review";
 import { bookingKeys } from "@/hooks/queries/keys";
@@ -135,7 +135,6 @@ export function BookingCard({
     onCancel != null &&
     booking.customer_id != null &&
     canCustomerCancelBooking(booking);
-  const showJourneyGreeting = showCustomerJourneyGreeting(booking);
   const needsCompletion = needsCustomerCompletionAction(booking);
   const canReview =
     !needsCompletion &&
@@ -179,7 +178,9 @@ export function BookingCard({
             <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-900 ring-1 ring-inset ring-sky-200">
               Action needed
             </span>
-          ) : null}
+          ) : (
+            <CustomerTripStatusBadge booking={booking} />
+          )}
           {isReturnLeg ? (
             <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-800 ring-1 ring-inset ring-violet-200">
               Return Journey
@@ -193,14 +194,7 @@ export function BookingCard({
 
       <p className="mt-2 text-sm text-slate-500">{formatPickupLine(booking)}</p>
 
-      {showJourneyGreeting ? (
-        <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
-          <p className="font-semibold">Enjoy your journey!</p>
-          <p className="mt-1 text-sky-900/90">
-            Your driver is on the way to pickup.
-          </p>
-        </div>
-      ) : null}
+      <CustomerTripStatusBanner booking={booking} />
 
       {compact ? (
         <>

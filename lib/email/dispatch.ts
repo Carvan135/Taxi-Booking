@@ -19,6 +19,7 @@ import {
   tripUpdateEmail,
 } from "@/lib/email/templates";
 import { getAppUrl } from "@/lib/env/app-url";
+import { agentLog } from "@/lib/debug/agent-log";
 import { getNotificationContent } from "@/lib/notifications/messages";
 import type { NotificationType } from "@/lib/validations/enums";
 
@@ -50,6 +51,20 @@ async function sendToCustomerEmail(
     booking_id: bookingId,
     user_id: userId,
   });
+
+  agentLog({
+    location: "dispatch.ts:sendToCustomerEmail:result",
+    message: "transactional email result",
+    data: {
+      emailType,
+      sent: result.sent,
+      hasError: Boolean(result.error),
+      errorMsg: result.error ?? null,
+    },
+    hypothesisId: "H-C",
+    runId: "post-fix",
+  });
+
   if (result.error) {
     console.error("Customer email failed:", result.error);
   }
@@ -173,6 +188,20 @@ export async function sendCustomerTripEmail(
   if (!email && input.customerId) {
     email = (await resolveProfileEmail(supabase, input.customerId)) ?? "";
   }
+
+  agentLog({
+    location: "dispatch.ts:sendCustomerTripEmail:entry",
+    message: "resolved recipient",
+    data: {
+      type: input.type,
+      hasEmail: Boolean(email),
+      resolvedViaProfile:
+        !Boolean(input.customerEmail?.trim()) && Boolean(input.customerId),
+    },
+    hypothesisId: "H-A",
+    runId: "post-fix",
+  });
+
   if (!email) return;
 
   if (input.type === "operator_marked_complete") {
@@ -180,6 +209,18 @@ export async function sendCustomerTripEmail(
       supabase,
       input.reference,
     );
+
+    agentLog({
+      location: "dispatch.ts:sendCustomerTripEmail:snapshot",
+      message: "snapshot lookup for completion email",
+      data: {
+        hasSnapshot: Boolean(snapshot),
+        referenceLen: input.reference?.length ?? 0,
+      },
+      hypothesisId: "H-B",
+      runId: "post-fix",
+    });
+
     if (snapshot) {
       const bookingData = snapshotToBookingEmailData(snapshot);
       const hours = Number(input.data?.hours ?? "24");
@@ -194,6 +235,15 @@ export async function sendCustomerTripEmail(
         input.customerId ?? null,
         payload,
       );
+
+      agentLog({
+        location: "dispatch.ts:sendCustomerTripEmail:completion-template",
+        message: "sent completionRequestEmail path",
+        data: { emailType: input.type },
+        hypothesisId: "H-B",
+        runId: "post-fix",
+      });
+
       return;
     }
   }
@@ -244,6 +294,14 @@ export async function sendCustomerTripEmail(
     input.customerId ?? null,
     payload,
   );
+
+  agentLog({
+    location: "dispatch.ts:sendCustomerTripEmail:fallback",
+    message: "sent tripUpdateEmail fallback path",
+    data: { emailType: input.type },
+    hypothesisId: "H-B",
+    runId: "post-fix",
+  });
 }
 
 export async function sendOperatorTripEmail(

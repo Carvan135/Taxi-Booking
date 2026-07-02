@@ -4,10 +4,8 @@ import {
   addHours,
   getAutoCompleteHours,
 } from "@/lib/booking/platform-settings-server";
-import {
-  fireBookingEmail,
-  emitCompletionRequestEmail,
-} from "@/lib/email/booking-events";
+import { sendCustomerTripEmail } from "@/lib/email/dispatch";
+import { agentLog } from "@/lib/debug/agent-log";
 import { getNotificationContent } from "@/lib/notifications/messages";
 import { sendNotification } from "@/lib/notifications/send";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
@@ -91,6 +89,19 @@ export async function POST(_req: Request, context: RouteContext) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
+    agentLog({
+      location: "mark-complete/route.ts:post-update",
+      message: "booking updated, preparing completion email",
+      data: {
+        bookingId,
+        hasCustomerEmail: Boolean(booking.customer_email?.trim()),
+        hasCustomerId: Boolean(booking.customer_id),
+        referenceLen: booking.reference?.length ?? 0,
+      },
+      hypothesisId: "H-D",
+      runId: "post-fix",
+    });
+
     const content = getNotificationContent("operator_marked_complete", {
       reference: booking.reference,
       hours: String(autoCompleteHours),
@@ -107,15 +118,23 @@ export async function POST(_req: Request, context: RouteContext) {
       });
     }
 
-    fireBookingEmail(() =>
-      emitCompletionRequestEmail(admin, {
-        bookingId,
-        reference: booking.reference,
-        customerEmail: booking.customer_email,
-        customerId: booking.customer_id,
-        autoCompleteHours,
-      }),
-    );
+    await sendCustomerTripEmail(admin, {
+      bookingId,
+      reference: booking.reference,
+      customerEmail: booking.customer_email,
+      customerId: booking.customer_id,
+      customerName: booking.customer_name,
+      type: "operator_marked_complete",
+      data: { hours: String(autoCompleteHours) },
+    });
+
+    agentLog({
+      location: "mark-complete/route.ts:post-email",
+      message: "sendCustomerTripEmail finished",
+      data: { bookingId, emailType: "operator_marked_complete" },
+      hypothesisId: "H-E",
+      runId: "post-fix",
+    });
 
     return NextResponse.json({
       success: true,

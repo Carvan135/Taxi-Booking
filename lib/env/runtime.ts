@@ -24,6 +24,8 @@ function readStaticProcessEnv(name: string): string | undefined {
       return process.env.STRIPE_WEBHOOK_SECRET?.trim();
     case "STRIPE_CONNECT_WEBHOOK_SECRET":
       return process.env.STRIPE_CONNECT_WEBHOOK_SECRET?.trim();
+    case "NEXT_PUBLIC_APP_URL":
+      return process.env.NEXT_PUBLIC_APP_URL?.trim();
     case "NEXT_PUBLIC_SUPABASE_URL":
       return process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
     case "SUPABASE_SERVICE_ROLE_KEY":

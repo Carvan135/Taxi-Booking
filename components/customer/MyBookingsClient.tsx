@@ -16,10 +16,8 @@ import {
   useMyBookings,
   type CustomerBookingRow,
 } from "@/hooks/queries/useBookings";
-import {
-  canCustomerCancelBooking,
-  showCustomerJourneyGreeting,
-} from "@/lib/booking/customer-booking-ui";
+import { CustomerTripStatusBadge, CustomerTripStatusBanner } from "@/components/booking/CustomerTripStatusBanner";
+import { canCustomerCancelBooking } from "@/lib/booking/customer-booking-ui";
 import {
   fetchCancellationPolicyClient,
   type ClientCancellationPolicy,
@@ -101,7 +99,6 @@ function BookingCard({
 
   const showActions = tab === "upcoming";
   const canCancel = canCustomerCancelBooking(booking);
-  const showJourneyGreeting = showCustomerJourneyGreeting(booking);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [policyLoading, setPolicyLoading] = useState(false);
   const [cancelPolicy, setCancelPolicy] =
@@ -143,6 +140,7 @@ function BookingCard({
               Completed
             </span>
           )}
+          {tab === "upcoming" ? <CustomerTripStatusBadge booking={booking} /> : null}
         </div>
         <p className="text-xl font-bold tabular-nums text-primary sm:text-2xl">
           {formatPrice(booking.price)}
@@ -151,14 +149,7 @@ function BookingCard({
 
       <p className="mt-2 text-sm text-slate-500">{formatPickupLine(booking)}</p>
 
-      {showJourneyGreeting ? (
-        <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
-          <p className="font-semibold">Enjoy your journey!</p>
-          <p className="mt-1 text-sky-900/90">
-            Your driver is on the way to pickup.
-          </p>
-        </div>
-      ) : null}
+      <CustomerTripStatusBanner booking={booking} />
 
       <ul className="mt-5 space-y-4">
         <li className="flex gap-3">

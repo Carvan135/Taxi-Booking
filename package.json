@@ -24,6 +24,7 @@
     "lucide-react": "^1.14.0",
     "nanoid": "^3.3.12",
     "next": "14.2.35",
+    "pdf-lib": "^1.17.1",
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.75.0",
