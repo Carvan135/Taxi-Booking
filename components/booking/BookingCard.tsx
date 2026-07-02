@@ -409,6 +409,7 @@ export function BookingCard({
         bookingId={booking.id}
         operatorName={booking.operators?.business_name ?? null}
         bookingReference={booking.reference}
+        customerEmail={lookupEmail ?? booking.customer_email ?? undefined}
         onSubmitted={(review) => {
           setLocalReview(review);
           refreshBookings();

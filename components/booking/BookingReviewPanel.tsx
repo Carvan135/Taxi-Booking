@@ -11,6 +11,7 @@ type BookingReviewPanelProps = {
   operatorName: string | null;
   canReview: boolean;
   existingReview: BookingReviewSummary | null;
+  customerEmail?: string;
   onReviewSubmitted?: () => void;
 };
 
@@ -19,6 +20,7 @@ export function BookingReviewPanel({
   operatorName,
   canReview,
   existingReview,
+  customerEmail,
   onReviewSubmitted,
 }: BookingReviewPanelProps) {
   const router = useRouter();
@@ -51,6 +53,7 @@ export function BookingReviewPanel({
       <BookingReviewForm
         bookingId={bookingId}
         operatorName={operatorName}
+        customerEmail={customerEmail}
         onSubmitted={(review) => {
           setSubmitted(review);
           onReviewSubmitted?.();

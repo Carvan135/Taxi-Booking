@@ -8,6 +8,8 @@ import type { BookingReviewSummary } from "@/types";
 type BookingReviewFormProps = {
   bookingId: string;
   operatorName: string | null;
+  /** Guest lookup email — required to submit without an account. */
+  customerEmail?: string;
   onSubmitted?: (review: BookingReviewSummary) => void;
   submitLabel?: string;
 };
@@ -15,6 +17,7 @@ type BookingReviewFormProps = {
 export function BookingReviewForm({
   bookingId,
   operatorName,
+  customerEmail,
   onSubmitted,
   submitLabel = "Submit review",
 }: BookingReviewFormProps) {
@@ -37,6 +40,7 @@ export function BookingReviewForm({
         body: JSON.stringify({
           rating,
           comment: comment.trim() || undefined,
+          ...(customerEmail ? { customer_email: customerEmail } : {}),
         }),
       });
       const json = (await res.json()) as {

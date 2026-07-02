@@ -9,6 +9,7 @@ import {
   type PaymentStatus,
   type ServiceType,
 } from "@/lib/validations/enums";
+import { mapBookingReviewJoin } from "@/lib/booking/customer-review";
 
 const PAYMENT_UNPAID = PAYMENT_STATUSES[0] satisfies PaymentStatus;
 import type { CustomerBookingRow } from "@/types";
@@ -44,6 +45,20 @@ type LookupLeg = {
   dispute_raised_at?: string | null;
   dispute_reason?: string | null;
   completed_at?: string | null;
+  review?:
+    | {
+        id: string;
+        rating: number;
+        comment: string | null;
+        created_at: string;
+      }
+    | {
+        id: string;
+        rating: number;
+        comment: string | null;
+        created_at: string;
+      }[]
+    | null;
   operator?: {
     id: string;
     business_name: string;
@@ -138,7 +153,7 @@ export function mapLookupResponseToBookings(
             total_reviews: Number(op.total_reviews ?? 0),
           }
         : null,
-      review: null,
+      review: mapBookingReviewJoin(leg.review),
     };
   });
 }

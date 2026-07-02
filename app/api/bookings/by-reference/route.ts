@@ -50,6 +50,12 @@ const bookingSelect = `
   luggage,
   return_date,
   return_time,
+  booking_reviews (
+    id,
+    rating,
+    comment,
+    created_at
+  ),
   operators (
     ${OPERATOR_FOR_CUSTOMER_BOOKING_SELECT}
   )
@@ -192,6 +198,7 @@ export async function GET(req: Request) {
           dispute_raised_at: legRow.dispute_raised_at,
           dispute_reason: legRow.dispute_reason,
           completed_at: legRow.completed_at,
+          review: legRow.booking_reviews,
           operator: legOperator,
         };
       }),

@@ -130,7 +130,8 @@ export default function BookingsLookupPage() {
           </h1>
           <p className="mt-2 text-sm text-content/70">
             Enter the reference and email from your confirmation to check status,
-            confirm completion, or raise a dispute — no account required.
+            confirm completion, raise a dispute, or leave a review — no account
+            required.
           </p>
         </div>
 
@@ -202,7 +203,7 @@ export default function BookingsLookupPage() {
             <BookingsTabsList
               bookings={bookings}
               title="Your booking"
-              subtitle="Track journey status, confirm completion, or complete payment if needed."
+              subtitle="Track journey status, confirm completion, rate your trip, or complete payment if needed."
               lookupEmail={lookupEmail}
               onUnpaidCancelled={() => {
                 setBookings((prev) =>

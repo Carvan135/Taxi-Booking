@@ -5,7 +5,6 @@ import {
   Calendar,
   Car,
   CheckCircle2,
-  Download,
   Mail,
   MapPin,
   PoundSterling,
@@ -74,7 +73,6 @@ export default function ConfirmationContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [guestEmail, setGuestEmail] = useState("");
   const [toast, setToast] = useState<string | null>(null);
-  const [receiptLoading, setReceiptLoading] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimSuccess, setClaimSuccess] = useState(false);
   const confirmationEmailAttemptedRef = useRef(false);
@@ -183,52 +181,6 @@ export default function ConfirmationContent() {
     setClaimSuccess(true);
     setIsAuthenticated(true);
   });
-
-  const downloadReceipt = async () => {
-    if (!booking || receiptLoading) return;
-    const legId =
-      booking.legs.find((l) => l.leg === "outbound")?.id ?? booking.legs[0]?.id;
-    if (!legId) {
-      setToast("Could not download receipt.");
-      window.setTimeout(() => setToast(null), 3200);
-      return;
-    }
-
-    setReceiptLoading(true);
-    setToast(null);
-    try {
-      const params = new URLSearchParams();
-      const email = (guestEmail || booking.customer_email).trim();
-      if (email) params.set("email", email);
-
-      const res = await fetch(
-        `/api/bookings/${legId}/receipt?${params.toString()}`,
-      );
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        setToast(body.error ?? "Could not download receipt.");
-        return;
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `receipt-${booking.reference}.pdf`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-      setToast("Receipt downloaded.");
-    } catch {
-      setToast("Could not download receipt.");
-    } finally {
-      setReceiptLoading(false);
-      window.setTimeout(() => setToast(null), 3200);
-    }
-  };
 
   const resendConfirmationEmail = async () => {
     if (!booking) return;
@@ -525,15 +477,6 @@ export default function ConfirmationContent() {
       ) : null}
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-        <button
-          type="button"
-          onClick={() => void downloadReceipt()}
-          disabled={receiptLoading}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-content shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Download className="h-4 w-4" aria-hidden />
-          {receiptLoading ? "Preparing PDF…" : "Download Receipt"}
-        </button>
         <button
           type="button"
           onClick={() => void resendConfirmationEmail()}

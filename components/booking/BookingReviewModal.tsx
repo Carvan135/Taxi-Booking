@@ -10,6 +10,7 @@ type BookingReviewModalProps = {
   bookingId: string;
   operatorName: string | null;
   bookingReference?: string;
+  customerEmail?: string;
   onSubmitted?: (review: BookingReviewSummary) => void;
 };
 
@@ -19,6 +20,7 @@ export function BookingReviewModal({
   bookingId,
   operatorName,
   bookingReference,
+  customerEmail,
   onSubmitted,
 }: BookingReviewModalProps) {
   return (
@@ -33,6 +35,7 @@ export function BookingReviewModal({
       <BookingReviewForm
         bookingId={bookingId}
         operatorName={operatorName}
+        customerEmail={customerEmail}
         onSubmitted={(review) => {
           onSubmitted?.(review);
           onClose();

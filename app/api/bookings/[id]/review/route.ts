@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { verifyCustomerBookingAccess } from "@/lib/booking/guest-booking-access";
 import { getNotificationContent } from "@/lib/notifications/messages";
 import { sendNotification } from "@/lib/notifications/send";
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { BOOKING_STATUS } from "@/lib/validations/enums";
 import { bookingReviewSchema } from "@/lib/validations/review";
 
@@ -12,15 +13,6 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function POST(req: Request, context: RouteContext) {
   try {
     const { id: bookingId } = await context.params;
-    const supabase = createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const body = await req.json().catch(() => ({}));
     const parsed = bookingReviewSchema.safeParse(body);
@@ -31,9 +23,12 @@ export async function POST(req: Request, context: RouteContext) {
       );
     }
 
+    const supabase = createServiceRoleClient();
     const { data: booking, error: readError } = await supabase
       .from("bookings")
-      .select("id, reference, customer_id, operator_id, status")
+      .select(
+        "id, reference, customer_id, customer_email, operator_id, status",
+      )
       .eq("id", bookingId)
       .maybeSingle();
 
@@ -41,8 +36,12 @@ export async function POST(req: Request, context: RouteContext) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    if (booking.customer_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const access = await verifyCustomerBookingAccess(
+      booking,
+      parsed.data.customer_email,
+    );
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     if (booking.status !== BOOKING_STATUS.completed) {
@@ -72,11 +71,25 @@ export async function POST(req: Request, context: RouteContext) {
       );
     }
 
+    const reviewCustomerId = booking.customer_id ?? access.userId ?? null;
+    const reviewCustomerEmail =
+      reviewCustomerId == null
+        ? (booking.customer_email?.trim().toLowerCase() ?? null)
+        : null;
+
+    if (!reviewCustomerId && !reviewCustomerEmail) {
+      return NextResponse.json(
+        { error: "No customer email on this booking" },
+        { status: 400 },
+      );
+    }
+
     const { data: review, error: insertError } = await supabase
       .from("booking_reviews")
       .insert({
         booking_id: bookingId,
-        customer_id: user.id,
+        customer_id: reviewCustomerId,
+        customer_email: reviewCustomerEmail,
         operator_id: booking.operator_id,
         rating: parsed.data.rating,
         comment: parsed.data.comment ?? null,
@@ -94,8 +107,7 @@ export async function POST(req: Request, context: RouteContext) {
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
-    const admin = createServiceRoleClient();
-    const { data: operator } = await admin
+    const { data: operator } = await supabase
       .from("operators")
       .select("user_id")
       .eq("id", booking.operator_id)

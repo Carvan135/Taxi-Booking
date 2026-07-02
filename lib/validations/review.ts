@@ -12,6 +12,7 @@ export const bookingReviewSchema = z.object({
     .max(2000, "Review must be 2000 characters or fewer")
     .optional()
     .transform((v) => (v && v.length > 0 ? v : undefined)),
+  customer_email: z.string().email().optional(),
 });
 
 export type BookingReviewInput = z.infer<typeof bookingReviewSchema>;
