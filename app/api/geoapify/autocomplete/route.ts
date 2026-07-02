@@ -23,8 +23,8 @@ export async function GET(req: Request) {
   }
 
   try {
-    const { places, provider } = await addressAutocomplete(text);
-    return NextResponse.json({ places, provider });
+    const { places, provider, googleFailure } = await addressAutocomplete(text);
+    return NextResponse.json({ places, provider, googleFailure });
   } catch (err) {
     console.error("address/autocomplete error:", err);
     return NextResponse.json(

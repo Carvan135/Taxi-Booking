@@ -5,13 +5,17 @@ import {
   googleGeocode,
   googlePlacesAutocomplete,
 } from "@/lib/maps/google-places-server";
+import { logGooglePlacesServerError } from "@/lib/maps/places-debug";
+import type { AddressProvider } from "@/lib/maps/places-debug";
 import type { GeoPlace } from "@/lib/maps/types";
 
-export type AddressProvider = "google" | "geoapify" | "none";
+export type { AddressProvider } from "@/lib/maps/places-debug";
 
 export type AddressAutocompleteResult = {
   places: GeoPlace[];
   provider: AddressProvider;
+  /** Set when Google is configured but we fell back to Geoapify. */
+  googleFailure?: string;
 };
 
 /** Address suggestions: Google Places first, Geoapify fallback. */
@@ -30,27 +34,84 @@ export async function addressAutocomplete(
         return { places, provider: "google" };
       }
     } catch (err) {
-      console.error("Google Places autocomplete error:", err);
+      const message =
+        err instanceof Error ? err.message.slice(0, 200) : "google_autocomplete_failed";
+      logGooglePlacesServerError("autocomplete", {
+        query: text,
+        googleFailure: message,
+        err,
+      });
+      const places = await geoapifyAutocomplete(text);
+      return {
+        places,
+        provider: places.length > 0 ? "geoapify" : "none",
+        googleFailure: message,
+      };
     }
+
+    logGooglePlacesServerError("autocomplete", {
+      query: text,
+      googleFailure: "empty_results",
+    });
+    const places = await geoapifyAutocomplete(text);
+    return {
+      places,
+      provider: places.length > 0 ? "geoapify" : "none",
+      googleFailure: "empty_results",
+    };
   }
 
   const places = await geoapifyAutocomplete(text);
   return { places, provider: places.length > 0 ? "geoapify" : "none" };
 }
 
+export type AddressGeocodeResult = {
+  place: GeoPlace | null;
+  provider: AddressProvider;
+  googleFailure?: string;
+};
+
 /** Geocode free-text address: Google Places first, Geoapify fallback. */
-export async function addressGeocode(text: string): Promise<GeoPlace | null> {
+export async function addressGeocode(text: string): Promise<AddressGeocodeResult> {
   const query = text.trim();
-  if (query.length < 3) return null;
+  if (query.length < 3) {
+    return { place: null, provider: "none" };
+  }
 
   if (await isGooglePlacesConfiguredAsync()) {
     try {
       const place = await googleGeocode(query);
-      if (place) return place;
+      if (place) {
+        return { place, provider: "google" };
+      }
     } catch (err) {
-      console.error("Google Places geocode error:", err);
+      const message =
+        err instanceof Error ? err.message.slice(0, 200) : "google_geocode_failed";
+      logGooglePlacesServerError("geocode", {
+        query,
+        googleFailure: message,
+        err,
+      });
+      const place = await geoapifyGeocode(query);
+      return {
+        place,
+        provider: place ? "geoapify" : "none",
+        googleFailure: message,
+      };
     }
+
+    logGooglePlacesServerError("geocode", {
+      query,
+      googleFailure: "empty_results",
+    });
+    const place = await geoapifyGeocode(query);
+    return {
+      place,
+      provider: place ? "geoapify" : "none",
+      googleFailure: "empty_results",
+    };
   }
 
-  return geoapifyGeocode(query);
+  const place = await geoapifyGeocode(query);
+  return { place, provider: place ? "geoapify" : "none" };
 }

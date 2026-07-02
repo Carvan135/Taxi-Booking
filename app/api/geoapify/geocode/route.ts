@@ -22,8 +22,8 @@ export async function GET(req: Request) {
   }
 
   try {
-    const place = await addressGeocode(text);
-    return NextResponse.json({ place });
+    const { place, provider, googleFailure } = await addressGeocode(text);
+    return NextResponse.json({ place, provider, googleFailure });
   } catch (err) {
     console.error("address/geocode error:", err);
     return NextResponse.json(
