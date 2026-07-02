@@ -6,7 +6,7 @@ import {
   type BookingLeg,
   type BookingStatus,
 } from "@/lib/validations/enums";
-import { needsCustomerCompletionAction } from "@/lib/booking/customer-completion-ui";
+import { needsCustomerCompletionAction, isBookingDisputed } from "@/lib/booking/customer-completion-ui";
 import type { CustomerBookingRow } from "@/types";
 
 export { BOOKING_STATUS, UPCOMING_BOOKING_STATUSES, COMPLETED_BOOKING_STATUSES };
@@ -37,6 +37,9 @@ export function isCompletedTabStatus(status: BookingStatus): boolean {
 
 export function isUpcomingBooking(booking: CustomerBookingRow): boolean {
   if (needsCustomerCompletionAction(booking)) {
+    return true;
+  }
+  if (isBookingDisputed(booking)) {
     return true;
   }
   return (

@@ -14,6 +14,7 @@ import {
   claimGuestBookings,
 } from "@/lib/guest/claim-bookings-client";
 import { signInSchema, type SignInFormData } from "@/lib/validations";
+import type { UserRole } from "@/types";
 
 const cardClass =
   "w-full max-w-md rounded-xl border border-slate-200/80 bg-white p-8 shadow-xl shadow-slate-300/40";
@@ -23,17 +24,33 @@ export type LoginFormVariant = "rider" | "operator";
 type LoginFormProps = {
   variant?: LoginFormVariant;
   allowedRoles?: Array<"customer" | "operator" | "admin">;
+  /** Render inside a modal or other container without card chrome. */
+  embedded?: boolean;
+  /** Override redirect from URL search params (`null` = no redirect). */
+  redirectTo?: string | null;
+  /** Sign-up link redirect when embedded (e.g. return to checkout). */
+  signupRedirectTo?: string;
+  /** Called on successful sign-in instead of navigating away. */
+  onSuccess?: (result: { role: UserRole }) => void | Promise<void>;
 };
 
-export function LoginForm({ variant = "rider", allowedRoles }: LoginFormProps) {
+export function LoginForm({
+  variant = "rider",
+  allowedRoles,
+  embedded = false,
+  redirectTo,
+  signupRedirectTo,
+  onSuccess,
+}: LoginFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered") === "true";
   const passwordReset = searchParams.get("reset") === "success";
-  const redirectParam = safeInternalRedirectPath(
-    searchParams.get("redirect"),
-  );
+  const redirectParam =
+    redirectTo !== undefined
+      ? redirectTo
+      : safeInternalRedirectPath(searchParams.get("redirect"));
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
@@ -61,6 +78,11 @@ export function LoginForm({ variant = "rider", allowedRoles }: LoginFormProps) {
       await claimGuestBookings(queryClient);
     }
 
+    if (onSuccess) {
+      await onSuccess({ role: result.role! });
+      return;
+    }
+
     if (redirectParam) {
       router.push(redirectParam);
       router.refresh();
@@ -82,9 +104,11 @@ export function LoginForm({ variant = "rider", allowedRoles }: LoginFormProps) {
     router.refresh();
   });
 
-  const riderSignupHref = redirectParam
-    ? `/signup?redirect=${encodeURIComponent(redirectParam)}`
-    : "/signup";
+  const riderSignupHref = signupRedirectTo
+    ? `/signup?redirect=${encodeURIComponent(signupRedirectTo)}`
+    : redirectParam
+      ? `/signup?redirect=${encodeURIComponent(redirectParam)}`
+      : "/signup";
   const operatorSignupHref = redirectParam
     ? `/signup/operator?redirect=${encodeURIComponent(redirectParam)}`
     : "/signup/operator";
@@ -94,13 +118,22 @@ export function LoginForm({ variant = "rider", allowedRoles }: LoginFormProps) {
       ? { title: "Operator sign in", subtitle: "Access your operator dashboard" }
       : { title: "Welcome back", subtitle: "Sign in to your AirportHub account" };
 
+  const wrapperClass = embedded ? "space-y-4" : cardClass;
+
   return (
-    <div className={cardClass}>
+    <div className={wrapperClass}>
       <div className="space-y-6">
-        <div className="text-center">
-          <h1 className="text-xl font-semibold text-content">{heading.title}</h1>
-          <p className="mt-1 text-sm text-content/70">{heading.subtitle}</p>
-        </div>
+        {embedded ? (
+          <p className="text-center text-sm text-content/70">
+            Sign in to pre-fill your details and save this booking to My
+            bookings after payment.
+          </p>
+        ) : (
+          <div className="text-center">
+            <h1 className="text-xl font-semibold text-content">{heading.title}</h1>
+            <p className="mt-1 text-sm text-content/70">{heading.subtitle}</p>
+          </div>
+        )}
 
         {registered ? (
           <div
@@ -200,8 +233,6 @@ export function LoginForm({ variant = "rider", allowedRoles }: LoginFormProps) {
 
 export function LoginFormCardFallback() {
   return (
-    <div className={cardClass}>
-      <div className="py-8 text-center text-sm text-content/60">Loading…</div>
-    </div>
+    <div className="py-6 text-center text-sm text-content/60">Loading…</div>
   );
 }

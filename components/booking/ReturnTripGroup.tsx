@@ -10,6 +10,7 @@ type ReturnTripGroupProps = {
   cancellingId?: string | null;
   lookupEmail?: string;
   onUnpaidCancelled?: () => void;
+  onBookingRefresh?: () => void;
 };
 
 export function ReturnTripGroup({
@@ -19,6 +20,7 @@ export function ReturnTripGroup({
   cancellingId = null,
   lookupEmail,
   onUnpaidCancelled,
+  onBookingRefresh,
 }: ReturnTripGroupProps) {
   const outbound = legs.find((l) => l.leg === BOOKING_LEG.outbound) ?? legs[0]!;
   const returnLeg = legs.find((l) => l.leg === BOOKING_LEG.return);
@@ -49,6 +51,7 @@ export function ReturnTripGroup({
               cancellingId={cancellingId}
               lookupEmail={lookupEmail}
               onUnpaidCancelled={onUnpaidCancelled}
+              onBookingRefresh={onBookingRefresh}
             />
           );
         })}

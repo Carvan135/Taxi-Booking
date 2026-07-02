@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { verifyCustomerBookingAccess } from "@/lib/booking/guest-booking-access";
 import {
   sendCustomerTripEmail,
   sendOperatorTripEmail,
@@ -10,7 +11,7 @@ import {
   sendNotification,
   sendNotificationToMultiple,
 } from "@/lib/notifications/send";
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { COMPLETION_STATUS } from "@/lib/validations/enums";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ const bodySchema = z.object({
     .trim()
     .min(10, "Reason must be at least 10 characters")
     .max(500, "Reason must be at most 500 characters"),
+  customer_email: z.string().email().optional(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -28,25 +30,19 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function POST(req: Request, context: RouteContext) {
   try {
     const { id: bookingId } = await context.params;
-    const supabase = createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const json: unknown = await req.json();
     const parsed = bodySchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: parsed.error.flatten().fieldErrors.reason?.[0] ?? "Invalid request" },
+        {
+          error:
+            parsed.error.flatten().fieldErrors.reason?.[0] ?? "Invalid request",
+        },
         { status: 400 },
       );
     }
 
+    const supabase = createServiceRoleClient();
     const { data: booking, error: readError } = await supabase
       .from("bookings")
       .select(
@@ -59,8 +55,12 @@ export async function POST(req: Request, context: RouteContext) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    if (booking.customer_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const access = await verifyCustomerBookingAccess(
+      booking,
+      parsed.data.customer_email,
+    );
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     if (booking.completion_status !== COMPLETION_STATUS.operator_marked_complete) {
@@ -71,8 +71,7 @@ export async function POST(req: Request, context: RouteContext) {
     }
 
     const now = new Date().toISOString();
-    const admin = createServiceRoleClient();
-    const { error: updateError } = await admin
+    const { error: updateError } = await supabase
       .from("bookings")
       .update({
         completion_status: COMPLETION_STATUS.disputed,
@@ -87,16 +86,18 @@ export async function POST(req: Request, context: RouteContext) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    const content = getNotificationContent("dispute_raised", {
-      reference: booking.reference,
-    });
-    await sendNotification({
-      user_id: user.id,
-      type: "dispute_raised",
-      title: content.title,
-      message: content.message,
-      booking_id: bookingId,
-    });
+    if (access.userId) {
+      const content = getNotificationContent("dispute_raised", {
+        reference: booking.reference,
+      });
+      await sendNotification({
+        user_id: access.userId,
+        type: "dispute_raised",
+        title: content.title,
+        message: content.message,
+        booking_id: bookingId,
+      });
+    }
 
     const adminIds = await fetchAdminUserIds();
     await sendNotificationToMultiple(adminIds, {
@@ -107,7 +108,7 @@ export async function POST(req: Request, context: RouteContext) {
       metadata: { reference: booking.reference, reason: parsed.data.reason },
     });
 
-    await sendCustomerTripEmail(admin, {
+    await sendCustomerTripEmail(supabase, {
       bookingId,
       reference: booking.reference,
       customerEmail: booking.customer_email,
@@ -117,7 +118,7 @@ export async function POST(req: Request, context: RouteContext) {
     });
 
     if (booking.operator_id) {
-      await sendOperatorTripEmail(admin, {
+      await sendOperatorTripEmail(supabase, {
         operatorId: booking.operator_id,
         bookingId,
         type: "dispute_raised",

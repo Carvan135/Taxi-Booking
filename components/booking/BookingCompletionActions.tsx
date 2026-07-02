@@ -21,6 +21,8 @@ type BookingCompletionActionsProps = {
     Booking,
     "id" | "auto_complete_at" | "completion_status" | "status"
   >;
+  /** Guest lookup email — required to confirm/dispute without an account. */
+  lookupEmail?: string;
   /** Compact layout for booking list cards. */
   compact?: boolean;
   /** Called after customer confirms completion (before refresh). */
@@ -31,6 +33,7 @@ type BookingCompletionActionsProps = {
 
 export function BookingCompletionActions({
   booking,
+  lookupEmail,
   compact = false,
   onAfterConfirm,
   onRefresh,
@@ -65,6 +68,10 @@ export function BookingCompletionActions({
     try {
       const res = await fetch(`/api/bookings/${booking.id}/confirm-complete`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          lookupEmail ? { customer_email: lookupEmail } : {},
+        ),
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(json.error ?? "Could not confirm");
@@ -88,7 +95,10 @@ export function BookingCompletionActions({
       const res = await fetch(`/api/bookings/${booking.id}/dispute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: reason.trim() }),
+        body: JSON.stringify({
+          reason: reason.trim(),
+          ...(lookupEmail ? { customer_email: lookupEmail } : {}),
+        }),
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(json.error ?? "Could not submit dispute");

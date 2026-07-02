@@ -45,6 +45,8 @@ type BookingCardProps = {
   /** Guest lookup email — required to cancel unpaid bookings without an account. */
   lookupEmail?: string;
   onUnpaidCancelled?: () => void;
+  /** Re-fetch booking data after guest completion actions. */
+  onBookingRefresh?: () => void;
 };
 
 function formatPickupLine(booking: CustomerBookingRow): string {
@@ -83,6 +85,7 @@ export function BookingCard({
   cancellingId = null,
   lookupEmail,
   onUnpaidCancelled,
+  onBookingRefresh,
 }: BookingCardProps) {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
@@ -95,6 +98,10 @@ export function BookingCard({
   const [localReview, setLocalReview] = useState(booking.review);
 
   function refreshBookings() {
+    if (onBookingRefresh) {
+      onBookingRefresh();
+      return;
+    }
     void queryClient.invalidateQueries({ queryKey: bookingKeys.customer });
   }
 
@@ -168,6 +175,11 @@ export function BookingCard({
           ) : (
             <BookingStatusBadge status={booking.status} />
           )}
+          {needsCompletion ? (
+            <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-900 ring-1 ring-inset ring-sky-200">
+              Action needed
+            </span>
+          ) : null}
           {isReturnLeg ? (
             <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-800 ring-1 ring-inset ring-violet-200">
               Return Journey
@@ -253,6 +265,7 @@ export function BookingCard({
       {needsCompletion ? (
         <BookingCompletionActions
           booking={booking}
+          lookupEmail={lookupEmail}
           compact
           onAfterConfirm={() => setReviewModalOpen(true)}
           onRefresh={refreshBookings}

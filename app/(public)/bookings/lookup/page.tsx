@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookingsTabsList } from "@/components/booking/BookingsTabsList";
 import { BOOK_TRIP_INPUT_CLASS } from "@/components/booking/booking-form-styles";
 import { Button } from "@/components/ui/Button";
+import { needsCustomerCompletionAction } from "@/lib/booking/customer-completion-ui";
 import { mapLookupResponseToBookings } from "@/lib/booking/map-lookup-bookings";
 import {
   loadTaxibookGuestSession,
@@ -15,6 +16,21 @@ import type { CustomerBookingRow } from "@/types";
 
 type LookupApiResponse = Parameters<typeof mapLookupResponseToBookings>[0];
 
+async function fetchGuestBookings(
+  ref: string,
+  guestEmail: string,
+): Promise<{ bookings: CustomerBookingRow[] } | { error: string }> {
+  const params = new URLSearchParams({ ref, email: guestEmail });
+  const res = await fetch(`/api/bookings/by-reference?${params.toString()}`);
+  const body = (await res.json()) as LookupApiResponse & { error?: string };
+
+  if (!res.ok) {
+    return { error: body.error ?? "No booking found for this reference and email." };
+  }
+
+  return { bookings: mapLookupResponseToBookings(body) };
+}
+
 export default function BookingsLookupPage() {
   const searchParams = useSearchParams();
   const [reference, setReference] = useState("");
@@ -22,6 +38,7 @@ export default function BookingsLookupPage() {
   const [bookings, setBookings] = useState<CustomerBookingRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [autoLookupDone, setAutoLookupDone] = useState(false);
 
   useEffect(() => {
     const refFromUrl = searchParams.get("ref")?.trim();
@@ -34,10 +51,53 @@ export default function BookingsLookupPage() {
     if (!refFromUrl && guest?.reference) setReference(guest.reference);
   }, [searchParams]);
 
+  const runLookup = useCallback(async (ref: string, guestEmail: string) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await fetchGuestBookings(ref, guestEmail);
+      if ("error" in result) {
+        setBookings(null);
+        setError(result.error);
+        return;
+      }
+
+      setBookings(result.bookings);
+
+      const bookingId = result.bookings[0]?.id;
+      if (bookingId) {
+        saveTaxibookGuestSession({
+          bookingId,
+          email: guestEmail,
+          reference: ref,
+        });
+      }
+    } catch {
+      setBookings(null);
+      setError("Could not look up your booking. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (autoLookupDone) return;
+
+    const refFromUrl = searchParams.get("ref")?.trim();
+    const emailFromUrl = searchParams.get("email")?.trim();
+    const guest = loadTaxibookGuestSession();
+
+    const ref = refFromUrl || guest?.reference || "";
+    const guestEmail = emailFromUrl || guest?.email || "";
+
+    if (ref && guestEmail) {
+      setAutoLookupDone(true);
+      void runLookup(ref, guestEmail);
+    }
+  }, [autoLookupDone, runLookup, searchParams]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setBookings(null);
 
     const ref = reference.trim();
     const guestEmail = email.trim();
@@ -51,34 +111,15 @@ export default function BookingsLookupPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ ref, email: guestEmail });
-      const res = await fetch(`/api/bookings/by-reference?${params.toString()}`);
-      const body = (await res.json()) as LookupApiResponse & { error?: string };
-
-      if (!res.ok) {
-        setError(body.error ?? "No booking found for this reference and email.");
-        return;
-      }
-
-      const rows = mapLookupResponseToBookings(body);
-      setBookings(rows);
-
-      const bookingId = rows[0]?.id;
-      if (bookingId) {
-        saveTaxibookGuestSession({
-          bookingId,
-          email: guestEmail,
-          reference: ref,
-        });
-      }
-    } catch {
-      setError("Could not look up your booking. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    await runLookup(ref, guestEmail);
   }
+
+  const needsAction = useMemo(
+    () => bookings?.some((booking) => needsCustomerCompletionAction(booking)) ?? false,
+    [bookings],
+  );
+
+  const lookupEmail = email.trim().toLowerCase();
 
   return (
     <section className="bg-gradient-to-b from-slate-50 via-white to-slate-50">
@@ -88,8 +129,8 @@ export default function BookingsLookupPage() {
             View your booking
           </h1>
           <p className="mt-2 text-sm text-content/70">
-            Enter the reference and email from your AirportHub confirmation — no
-            account required.
+            Enter the reference and email from your confirmation to check status,
+            confirm completion, or raise a dispute — no account required.
           </p>
         </div>
 
@@ -132,7 +173,7 @@ export default function BookingsLookupPage() {
           ) : null}
 
           <Button type="submit" loading={loading} className="w-full">
-            Find booking
+            {bookings ? "Refresh booking" : "Find booking"}
           </Button>
         </form>
 
@@ -148,15 +189,32 @@ export default function BookingsLookupPage() {
 
         {bookings && bookings.length > 0 ? (
           <div className="mt-10 border-t border-slate-200 pt-8">
+            {needsAction ? (
+              <p
+                className="mx-auto mb-6 max-w-3xl rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"
+                role="status"
+              >
+                <strong className="font-semibold">Action needed:</strong> your
+                operator marked this ride complete. Please confirm delivery or
+                raise a dispute below.
+              </p>
+            ) : null}
             <BookingsTabsList
               bookings={bookings}
               title="Your booking"
-              subtitle="Looked up by reference and email. Unpaid bookings can be completed or cancelled below."
-              lookupEmail={email.trim().toLowerCase()}
+              subtitle="Track journey status, confirm completion, or complete payment if needed."
+              lookupEmail={lookupEmail}
               onUnpaidCancelled={() => {
                 setBookings((prev) =>
                   prev?.filter((b) => b.status !== "cancelled") ?? null,
                 );
+              }}
+              onBookingRefresh={() => {
+                const ref = reference.trim();
+                const guestEmail = email.trim();
+                if (ref && guestEmail) {
+                  void runLookup(ref, guestEmail);
+                }
               }}
             />
           </div>

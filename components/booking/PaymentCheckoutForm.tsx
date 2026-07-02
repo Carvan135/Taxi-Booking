@@ -7,10 +7,11 @@ import {
 } from "@stripe/react-stripe-js";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
+import { CustomerSignInModal } from "@/components/auth/CustomerSignInModal";
 import { PaymentTrustBadges } from "@/components/booking/PaymentTrustBadges";
 import { BOOK_TRIP_INPUT_CLASS } from "@/components/booking/booking-form-styles";
 import type { BookingPriceBreakdown } from "@/lib/booking/pricing";
@@ -65,6 +66,7 @@ type PaymentCheckoutFormProps = {
   isAuthenticated: boolean;
   stripeReady?: boolean;
   onPriceMismatch?: () => void;
+  onAuthenticated?: () => void;
 };
 
 export function PaymentCheckoutForm({
@@ -76,12 +78,15 @@ export function PaymentCheckoutForm({
   isAuthenticated,
   stripeReady = true,
   onPriceMismatch,
+  onAuthenticated,
 }: PaymentCheckoutFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const stripe = useStripe();
   const elements = useElements();
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [isPaying, setIsPaying] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -371,19 +376,31 @@ export function PaymentCheckoutForm({
       </div>
 
       {!isAuthenticated ? (
-        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-          <p className="font-semibold text-content">Are you a customer?</p>
-          <p className="mt-2 text-content/70">
-            Continue as guest below, or{" "}
-            <Link
-              href="/login?redirect=/payment"
-              className="font-semibold text-secondary hover:underline"
-            >
-              sign in to your account
-            </Link>{" "}
-            to pre-fill your details and see this booking in My bookings after payment.
-          </p>
-        </div>
+        <>
+          <CustomerSignInModal
+            open={signInOpen}
+            onClose={() => setSignInOpen(false)}
+            onSuccess={async () => {
+              await queryClient.invalidateQueries({ queryKey: ["profile"] });
+              onAuthenticated?.();
+            }}
+          />
+          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+            <p className="font-semibold text-content">Are you a customer?</p>
+            <p className="mt-2 text-content/70">
+              Continue as guest below, or{" "}
+              <button
+                type="button"
+                onClick={() => setSignInOpen(true)}
+                className="font-semibold text-secondary hover:underline"
+              >
+                sign in to your account
+              </button>{" "}
+              to pre-fill your details and see this booking in My bookings after
+              payment.
+            </p>
+          </div>
+        </>
       ) : null}
 
       <fieldset className="mt-6 space-y-4">

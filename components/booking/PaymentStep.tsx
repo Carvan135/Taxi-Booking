@@ -329,6 +329,7 @@ export function PaymentStep() {
               isAuthenticated={isAuthenticated}
               stripeReady={stripeReady}
               onPriceMismatch={refreshPaymentIntent}
+              onAuthenticated={() => setIsAuthenticated(true)}
             />
           </Elements>
         </div>

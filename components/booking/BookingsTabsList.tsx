@@ -26,6 +26,8 @@ type BookingsTabsListProps = {
   /** Email used on guest lookup — enables cancel on unpaid bookings. */
   lookupEmail?: string;
   onUnpaidCancelled?: () => void;
+  /** Re-fetch booking data after guest completion actions. */
+  onBookingRefresh?: () => void;
 };
 
 export function BookingsTabsList({
@@ -35,6 +37,7 @@ export function BookingsTabsList({
   enableManageActions = false,
   lookupEmail,
   onUnpaidCancelled: onUnpaidCancelledProp,
+  onBookingRefresh,
 }: BookingsTabsListProps) {
   const router = useRouter();
   const onUnpaidCancelled =
@@ -109,6 +112,7 @@ export function BookingsTabsList({
                   cancellingId={cancellingId}
                   lookupEmail={lookupEmail}
                   onUnpaidCancelled={onUnpaidCancelled}
+                  onBookingRefresh={onBookingRefresh}
                   onCancel={
                     enableManageActions
                       ? async (id) => {
@@ -177,6 +181,7 @@ function BookingGroupItem({
   cancellingId,
   lookupEmail,
   onUnpaidCancelled,
+  onBookingRefresh,
 }: {
   group: BookingDisplayGroup;
   showActions: boolean;
@@ -184,6 +189,7 @@ function BookingGroupItem({
   cancellingId: string | null;
   lookupEmail?: string;
   onUnpaidCancelled?: () => void;
+  onBookingRefresh?: () => void;
 }) {
   if (group.kind === "return") {
     return (
@@ -194,6 +200,7 @@ function BookingGroupItem({
         cancellingId={cancellingId}
         lookupEmail={lookupEmail}
         onUnpaidCancelled={onUnpaidCancelled}
+        onBookingRefresh={onBookingRefresh}
       />
     );
   }
@@ -206,6 +213,7 @@ function BookingGroupItem({
       cancellingId={cancellingId}
       lookupEmail={lookupEmail}
       onUnpaidCancelled={onUnpaidCancelled}
+      onBookingRefresh={onBookingRefresh}
     />
   );
 }

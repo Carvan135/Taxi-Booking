@@ -1,9 +1,11 @@
 import {
   BOOKING_STATUS,
+  COMPLETION_STATUS,
   PAYMENT_STATUSES,
   type BookingLeg,
   type BookingStatus,
   type BookingType,
+  type CompletionStatus,
   type PaymentStatus,
   type ServiceType,
 } from "@/lib/validations/enums";
@@ -20,6 +22,8 @@ type LookupLeg = {
   dropoff_address: string;
   pickup_date: string;
   pickup_time: string;
+  return_date?: string | null;
+  return_time?: string | null;
   passengers: number;
   service_type: ServiceType;
   price: number | null;
@@ -29,6 +33,17 @@ type LookupLeg = {
   created_at?: string;
   booking_type?: BookingType;
   group_reference?: string | null;
+  notes?: string | null;
+  luggage?: number | null;
+  journey_started_at?: string | null;
+  completion_status?: CompletionStatus | null;
+  completion_requested_at?: string | null;
+  completion_requested_by?: string | null;
+  customer_confirmed_at?: string | null;
+  auto_complete_at?: string | null;
+  dispute_raised_at?: string | null;
+  dispute_reason?: string | null;
+  completed_at?: string | null;
   operator?: {
     id: string;
     business_name: string;
@@ -48,6 +63,7 @@ type LookupApiResponse = {
   group_reference: string | null;
   booking_type: BookingType;
   customer_email: string;
+  customer_name?: string | null;
   legs: LookupLeg[];
 };
 
@@ -71,31 +87,31 @@ export function mapLookupResponseToBookings(
       status: leg.status ?? BOOKING_STATUS.pending,
       stripe_payment_intent_id: null,
       payment_status: leg.payment_status ?? PAYMENT_UNPAID,
-      notes: null,
+      notes: leg.notes ?? null,
       booking_type: leg.booking_type ?? data.booking_type,
       group_reference: leg.group_reference ?? data.group_reference,
       leg: leg.leg,
       service_type: leg.service_type,
-      return_date: null,
-      return_time: null,
-      customer_name: null,
+      return_date: leg.return_date ?? null,
+      return_time: leg.return_time ?? null,
+      customer_name: data.customer_name ?? null,
       customer_email: data.customer_email,
       customer_phone: null,
       platform_commission: 0,
       operator_payout: 0,
       payout_released_at: null,
       payout_eligible_at: null,
-      completed_at: null,
+      completed_at: leg.completed_at ?? null,
       assigned_at: null,
-      journey_started_at: null,
-      luggage: 0,
-      completion_status: "none",
-      completion_requested_at: null,
-      completion_requested_by: null,
-      customer_confirmed_at: null,
-      auto_complete_at: null,
-      dispute_raised_at: null,
-      dispute_reason: null,
+      journey_started_at: leg.journey_started_at ?? null,
+      luggage: leg.luggage ?? 0,
+      completion_status: leg.completion_status ?? COMPLETION_STATUS.none,
+      completion_requested_at: leg.completion_requested_at ?? null,
+      completion_requested_by: leg.completion_requested_by ?? null,
+      customer_confirmed_at: leg.customer_confirmed_at ?? null,
+      auto_complete_at: leg.auto_complete_at ?? null,
+      dispute_raised_at: leg.dispute_raised_at ?? null,
+      dispute_reason: leg.dispute_reason ?? null,
       refund_amount: null,
       refund_type: null,
       refunded_at: null,

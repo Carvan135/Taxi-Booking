@@ -28,9 +28,17 @@ export type ReceiptBooking = Booking & {
 export function bookingToReceiptEmailData(
   booking: ReceiptBooking,
 ): MappedBookingEmailData & BookingEmailReturnLeg {
-  const legs = booking.grouped_legs ?? [booking];
+  const legs =
+    booking.grouped_legs && booking.grouped_legs.length > 0
+      ? booking.grouped_legs
+      : [booking];
   const outbound =
-    legs.find((l) => l.leg === "outbound") ?? legs[0];
+    legs.find((l) => l.leg === "outbound") ??
+    legs.find((l) => l.leg !== "return") ??
+    legs[0];
+  if (!outbound) {
+    throw new Error("Receipt booking has no journey leg data");
+  }
   const returnLeg = legs.find((l) => l.leg === "return");
   const appUrl = getAppUrl().replace(/\/$/, "");
 

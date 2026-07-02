@@ -4,15 +4,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Calendar,
   Luggage,
-  Mail,
   MapPin,
-  Phone,
   Users,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { OperatorBookingsListSkeleton } from "@/components/operator/OperatorBookingCardSkeleton";
 import { BookingStatusBadge } from "@/components/booking/BookingStatusBadge";
+import { CustomerContactDetailsModal } from "@/components/operator/CustomerContactDetailsModal";
 import { StartJourneyConfirmModal } from "@/components/operator/StartJourneyConfirmModal";
 import { useStartJourneyAction } from "@/components/operator/useStartJourneyAction";
 import { Button } from "@/components/ui/Button";
@@ -35,7 +34,6 @@ import {
   sortBookingsForOperator,
   type OperatorBookingsTab,
 } from "@/lib/booking/operator-booking-list";
-import { gmailComposeHref, mailtoHref, telHref } from "@/lib/booking/operator-contact";
 import { groupBookingsForDisplay } from "@/lib/booking/booking-list";
 import type { Booking } from "@/types";
 import type { BookingStatus } from "@/lib/validations/enums";
@@ -113,6 +111,8 @@ function OperatorBookingCard({
 
   const email = booking.customer_email?.trim() || null;
   const phone = booking.customer_phone?.trim() || null;
+  const [contactOpen, setContactOpen] = useState(false);
+  const showContact = (email || phone) && !isPastBooking(booking);
 
   return (
     <article
@@ -186,38 +186,14 @@ function OperatorBookingCard({
         </p>
       ) : null}
 
-      {(email || phone) && !isPastBooking(booking) ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {phone ? (
-            <a
-              href={telHref(phone)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-content hover:bg-slate-50"
-            >
-              <Phone className="h-3.5 w-3.5" aria-hidden />
-              Call
-            </a>
-          ) : null}
-          {email ? (
-            <a
-              href={mailtoHref(email, booking.reference)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-content hover:bg-slate-50"
-            >
-              <Mail className="h-3.5 w-3.5" aria-hidden />
-              Email
-            </a>
-          ) : null}
-          {email ? (
-            <a
-              href={gmailComposeHref(email, booking.reference)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-content hover:bg-slate-50"
-            >
-              Gmail
-            </a>
-          ) : null}
-        </div>
-      ) : null}
+      <CustomerContactDetailsModal
+        open={contactOpen}
+        onClose={() => setContactOpen(false)}
+        customerName={booking.customer_name?.trim() || "Customer"}
+        email={email}
+        phone={phone}
+        bookingReference={booking.reference}
+      />
 
       {awaitingPayment ? (
         <p className="mt-4 text-sm text-amber-900">
@@ -227,6 +203,16 @@ function OperatorBookingCard({
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
+        {showContact ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setContactOpen(true)}
+          >
+            View Contact Details
+          </Button>
+        ) : null}
         {showStart ? (
           <Button
             type="button"

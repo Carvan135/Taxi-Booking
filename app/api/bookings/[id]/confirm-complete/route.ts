@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import {
   addHours,
   getPayoutDelayHours,
 } from "@/lib/booking/platform-settings-server";
+import { verifyCustomerBookingAccess } from "@/lib/booking/guest-booking-access";
 import { getNotificationContent } from "@/lib/notifications/messages";
 import { sendNotification } from "@/lib/notifications/send";
 import {
@@ -17,21 +19,22 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const bodySchema = z.object({
+  customer_email: z.string().email().optional(),
+});
+
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function POST(_req: Request, context: RouteContext) {
+export async function POST(req: Request, context: RouteContext) {
   try {
     const { id: bookingId } = await context.params;
-    const supabase = createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const json: unknown = await req.json().catch(() => ({}));
+    const parsed = bodySchema.safeParse(json);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
+    const supabase = createServiceRoleClient();
     const { data: booking, error: readError } = await supabase
       .from("bookings")
       .select(
@@ -44,8 +47,12 @@ export async function POST(_req: Request, context: RouteContext) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    if (booking.customer_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const access = await verifyCustomerBookingAccess(
+      booking,
+      parsed.data.customer_email,
+    );
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     if (booking.completion_status !== COMPLETION_STATUS.operator_marked_complete) {
@@ -59,8 +66,7 @@ export async function POST(_req: Request, context: RouteContext) {
     const now = new Date();
     const payoutEligibleAt = addHours(now, payoutDelayHours);
 
-    const admin = createServiceRoleClient();
-    const { error: updateError } = await admin
+    const { error: updateError } = await supabase
       .from("bookings")
       .update({
         completion_status: COMPLETION_STATUS.customer_confirmed,
@@ -78,7 +84,8 @@ export async function POST(_req: Request, context: RouteContext) {
     }
 
     if (booking.operator_id) {
-      const { data: op } = await supabase
+      const authClient = createClient();
+      const { data: op } = await authClient
         .from("operators")
         .select("user_id")
         .eq("id", booking.operator_id)
@@ -99,7 +106,7 @@ export async function POST(_req: Request, context: RouteContext) {
     }
 
     if (booking.payment_status === "paid") {
-      fireBookingEmail(() => emitBookingReceiptEmail(admin, bookingId));
+      fireBookingEmail(() => emitBookingReceiptEmail(supabase, bookingId));
     }
 
     return NextResponse.json({ success: true });
