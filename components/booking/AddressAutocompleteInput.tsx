@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { BOOK_TRIP_INPUT_CLASS } from "@/components/booking/booking-form-styles";
-import { autocomplete, type GeoPlace } from "@/lib/maps/geoapify-client";
+import { autocomplete, resolvePlaceSuggestion, type GeoPlace } from "@/lib/maps/geoapify-client";
 
 const DEBOUNCE_MS = 400;
 
@@ -92,10 +92,24 @@ export function AddressAutocompleteInput({
 
   const handleSelect = useCallback(
     (place: GeoPlace) => {
-      onValueChange(place.label);
-      onPlaceSelect(place);
-      setSuggestions([]);
-      setIsOpen(false);
+      void (async () => {
+        try {
+          let resolved = place;
+          if (place.googlePlaceId) {
+            setIsLoading(true);
+            resolved = await resolvePlaceSuggestion(place.googlePlaceId);
+          }
+          onValueChange(resolved.label);
+          onPlaceSelect(resolved);
+          setSuggestions([]);
+          setIsOpen(false);
+        } catch {
+          setSuggestions([]);
+          setIsOpen(false);
+        } finally {
+          setIsLoading(false);
+        }
+      })();
     },
     [onPlaceSelect, onValueChange],
   );
@@ -165,7 +179,7 @@ export function AddressAutocompleteInput({
         >
           {suggestions.map((place, index) => (
             <li
-              key={`${place.lat}-${place.lng}-${index}`}
+              key={place.googlePlaceId ?? `${place.lat}-${place.lng}-${index}`}
               role="option"
               aria-selected={index === activeIndex}
             >

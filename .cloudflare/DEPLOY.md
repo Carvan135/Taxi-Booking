@@ -54,9 +54,10 @@ Required for address autocomplete / geocoding and driving-distance quotes:
 
 | Variable | Notes |
 |----------|--------|
-| `GEOAPIFY_API_KEY` | Server-side Geoapify key (recommended). Use a key **without** HTTP referrer restrictions, or Geoapify will reject Worker `fetch` calls. |
+| `GOOGLE_PLACES_API_KEY` | **Primary** pickup/dropoff autocomplete (Places API New). Enable **Places API** in Google Cloud; restrict key to server IPs or use unrestricted server key on Workers. |
+| `GEOAPIFY_API_KEY` | **Fallback** autocomplete/geocoding + **routing** for distance quotes. Use a key **without** HTTP referrer restrictions, or Geoapify will reject Worker `fetch` calls. |
 
-After deploy, check `GET /api/health` — `geoapifyConfigured` must be `true`. If autocomplete returns `503` with `geoapify_not_configured`, add the variable and redeploy.
+After deploy, check `GET /api/health` — `googlePlacesConfigured` and/or `geoapifyConfigured` should be `true`. Routing still requires Geoapify.
 
 ### Stripe (payment step)
 

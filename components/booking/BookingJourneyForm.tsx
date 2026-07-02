@@ -289,7 +289,7 @@ export function BookingJourneyForm({ variant = "page" }: BookingJourneyFormProps
                 From (postcode or place)
               </>
             }
-            placeholder="e.g. SW1A 1AA or Heathrow Airport"
+            placeholder="e.g. SW1A 1AA then pick your address, or Heathrow Airport"
             value={pickupAddress}
             selectedPlace={pickupPlace}
             onValueChange={(v) => setValue("pickup_address", v, { shouldValidate: true })}
@@ -306,7 +306,7 @@ export function BookingJourneyForm({ variant = "page" }: BookingJourneyFormProps
                 To (postcode or place)
               </>
             }
-            placeholder="e.g. EC1A 1BB or London City Airport"
+            placeholder="e.g. EC1A 1BB then pick your address, or London City Airport"
             value={dropoffAddress}
             selectedPlace={dropoffPlace}
             onValueChange={(v) => setValue("dropoff_address", v, { shouldValidate: true })}

@@ -236,7 +236,12 @@ function shouldSupplementWithSearch(
     .replace(/,/g, " ")
     .trim();
 
-  return remainder.length >= 3;
+  // Postcode-only queries need the geocode search supplement (area → streets).
+  if (remainder.length === 0) {
+    return true;
+  }
+
+  return remainder.length >= 2;
 }
 
 async function searchFeatures(query: string, limit = SUGGESTION_LIMIT): Promise<GeoapifyFeature[]> {

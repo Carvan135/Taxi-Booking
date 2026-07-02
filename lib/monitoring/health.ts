@@ -6,6 +6,7 @@ import {
 } from "@/lib/email/config";
 import { getRuntimeEnv } from "@/lib/env/runtime";
 import { isGeoapifyConfigured } from "@/lib/env/geoapify";
+import { isGooglePlacesConfigured } from "@/lib/env/google-places";
 import { isStripePublishableKeyConfigured } from "@/lib/stripe/publishable-key";
 import { isSmsConfigured } from "@/lib/sms/config";
 import { hasServiceRoleConfig, isSupabaseServiceRoleKeyValid } from "@/lib/supabase/admin";
@@ -18,6 +19,7 @@ export type HealthChecks = {
   supabaseServiceRoleConfigured: boolean;
   supabaseServiceRoleKeyValid: boolean;
   geoapifyConfigured: boolean;
+  googlePlacesConfigured: boolean;
   emailConfigured: boolean;
   resendApiKeyConfigured: boolean;
   resendFromEmailConfigured: boolean;
@@ -48,6 +50,7 @@ function buildChecks(): HealthChecks {
     supabaseServiceRoleConfigured: hasServiceRoleConfig(),
     supabaseServiceRoleKeyValid: isSupabaseServiceRoleKeyValid(),
     geoapifyConfigured: isGeoapifyConfigured(),
+    googlePlacesConfigured: isGooglePlacesConfigured(),
     emailConfigured: isEmailConfigured(),
     resendApiKeyConfigured: isResendApiKeyConfigured(),
     resendFromEmailConfigured: isResendFromEmailConfigured(),

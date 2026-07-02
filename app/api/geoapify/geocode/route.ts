@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { addressGeocode } from "@/lib/maps/address-autocomplete";
 import { isGeoapifyConfigured } from "@/lib/env/geoapify";
-import { geocode } from "@/lib/maps/geoapify-server";
+import { isGooglePlacesConfigured } from "@/lib/env/google-places";
 
 export const dynamic = "force-dynamic";
 
@@ -11,21 +12,21 @@ export async function GET(req: Request) {
     return NextResponse.json({ place: null }, { status: 400 });
   }
 
-  if (!isGeoapifyConfigured()) {
-    console.error("geoapify/geocode: GEOAPIFY_API_KEY is not set");
+  if (!isGooglePlacesConfigured() && !isGeoapifyConfigured()) {
+    console.error("address/geocode: no address provider configured");
     return NextResponse.json(
-      { place: null, error: "geoapify_not_configured" },
+      { place: null, error: "address_provider_not_configured" },
       { status: 503 },
     );
   }
 
   try {
-    const place = await geocode(text);
+    const place = await addressGeocode(text);
     return NextResponse.json({ place });
   } catch (err) {
-    console.error("geoapify/geocode error:", err);
+    console.error("address/geocode error:", err);
     return NextResponse.json(
-      { place: null, error: "geoapify_request_failed" },
+      { place: null, error: "geocode_request_failed" },
       { status: 502 },
     );
   }

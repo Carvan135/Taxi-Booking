@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { addressAutocomplete } from "@/lib/maps/address-autocomplete";
 import { isGeoapifyConfigured } from "@/lib/env/geoapify";
-import { autocomplete } from "@/lib/maps/geoapify-server";
+import { isGooglePlacesConfigured } from "@/lib/env/google-places";
 
 export const dynamic = "force-dynamic";
 
@@ -11,21 +12,21 @@ export async function GET(req: Request) {
     return NextResponse.json({ places: [] });
   }
 
-  if (!isGeoapifyConfigured()) {
-    console.error("geoapify/autocomplete: GEOAPIFY_API_KEY is not set");
+  if (!isGooglePlacesConfigured() && !isGeoapifyConfigured()) {
+    console.error("address/autocomplete: no address provider configured");
     return NextResponse.json(
-      { places: [], error: "geoapify_not_configured" },
+      { places: [], error: "address_provider_not_configured" },
       { status: 503 },
     );
   }
 
   try {
-    const places = await autocomplete(text);
+    const places = await addressAutocomplete(text);
     return NextResponse.json({ places });
   } catch (err) {
-    console.error("geoapify/autocomplete error:", err);
+    console.error("address/autocomplete error:", err);
     return NextResponse.json(
-      { places: [], error: "geoapify_request_failed" },
+      { places: [], error: "autocomplete_request_failed" },
       { status: 502 },
     );
   }

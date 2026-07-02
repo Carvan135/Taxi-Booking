@@ -19,6 +19,16 @@ export async function autocomplete(query: string): Promise<GeoPlace[]> {
   return data.places ?? [];
 }
 
+export async function resolvePlaceSuggestion(placeId: string): Promise<GeoPlace> {
+  const url = new URL("/api/geoapify/resolve-address", window.location.origin);
+  url.searchParams.set("id", placeId);
+  const data = await fetchJson<{ place: GeoPlace | null; error?: string }>(url);
+  if (!data.place) {
+    throw new Error(data.error ?? "Could not resolve address");
+  }
+  return data.place;
+}
+
 export async function geocode(text: string): Promise<GeoPlace | null> {
   const query = text.trim();
   if (query.length < 3) return null;
