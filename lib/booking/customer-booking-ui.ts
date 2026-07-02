@@ -1,6 +1,5 @@
 import { BOOKING_STATUS, COMPLETION_STATUS } from "@/lib/validations/enums";
 import type { Booking } from "@/types";
-import { needsCustomerCompletionAction } from "@/lib/booking/customer-completion-ui";
 
 export {
   bookingNeedsPayment,

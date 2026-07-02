@@ -3,7 +3,6 @@ import {
   bookingToReceiptEmailData,
   type ReceiptBooking,
 } from "@/lib/pdf/booking-to-receipt-data";
-import type { BookingEmailData, BookingEmailReturnLeg } from "@/lib/email/types";
 import { formatBookingVehicleType } from "@/lib/operator/fleet-vehicle-types";
 
 const NAVY = rgb(0.118, 0.227, 0.373);
@@ -13,8 +12,6 @@ const BORDER = rgb(0.898, 0.906, 0.918);
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const MARGIN = 48;
-
-type ReceiptData = BookingEmailData & BookingEmailReturnLeg;
 
 function formatMoney(amount: number): string {
   return `£${amount.toLocaleString("en-GB", {
@@ -170,7 +167,7 @@ export async function generateReceiptPdfBytes(
     color: MUTED,
   });
   const pickupWhen = `${data.pickup_date} at ${data.pickup_time}`;
-  let rightY = drawLines(
+  const rightY = drawLines(
     page,
     [
       `Ref: ${data.reference}`,
