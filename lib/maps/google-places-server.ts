@@ -1,4 +1,4 @@
-import { getGooglePlacesApiKey } from "@/lib/env/google-places";
+import { getGooglePlacesApiKeyAsync } from "@/lib/env/google-places";
 import type { GeoPlace } from "@/lib/maps/types";
 
 const GOOGLE_PLACES_BASE = "https://places.googleapis.com/v1";
@@ -43,7 +43,7 @@ function formatPlaceLabel(data: GooglePlaceDetails): string {
 
 /** Google Places Autocomplete (New) — UK-focused address suggestions. */
 export async function googlePlacesAutocomplete(input: string): Promise<GeoPlace[]> {
-  const apiKey = getGooglePlacesApiKey();
+  const apiKey = await getGooglePlacesApiKeyAsync();
   if (!apiKey) return [];
 
   const res = await fetch(`${GOOGLE_PLACES_BASE}/places:autocomplete`, {
@@ -91,7 +91,7 @@ export async function googlePlacesAutocomplete(input: string): Promise<GeoPlace[
 
 /** Resolve a Google place id to coordinates and a formatted label. */
 export async function resolveGooglePlace(placeId: string): Promise<GeoPlace | null> {
-  const apiKey = getGooglePlacesApiKey();
+  const apiKey = await getGooglePlacesApiKeyAsync();
   if (!apiKey) return null;
 
   const res = await fetch(
@@ -131,7 +131,7 @@ export async function resolveGooglePlace(placeId: string): Promise<GeoPlace | nu
 
 /** Forward geocode a free-text UK address via Google Text Search (New). */
 export async function googleGeocode(text: string): Promise<GeoPlace | null> {
-  const apiKey = getGooglePlacesApiKey();
+  const apiKey = await getGooglePlacesApiKeyAsync();
   if (!apiKey) return null;
 
   const res = await fetch(`${GOOGLE_PLACES_BASE}/places:searchText`, {

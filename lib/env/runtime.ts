@@ -97,6 +97,8 @@ export type RuntimeEnvDiagnostics = {
 };
 
 const DIAGNOSTIC_VARS = [
+  "GOOGLE_PLACES_API_KEY",
+  "GEOAPIFY_API_KEY",
   "RESEND_API_KEY",
   "RESEND_FROM_EMAIL",
   "SUPABASE_SERVICE_ROLE_KEY",

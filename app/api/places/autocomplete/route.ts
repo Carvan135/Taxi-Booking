@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addressGeocode } from "@/lib/maps/address-autocomplete";
+import { addressAutocomplete } from "@/lib/maps/address-autocomplete";
 import { isGeoapifyConfigured } from "@/lib/env/geoapify";
 import { isGooglePlacesConfiguredAsync } from "@/lib/env/google-places";
 
@@ -8,26 +8,26 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const text = (searchParams.get("text") ?? "").trim();
-  if (text.length < 3) {
-    return NextResponse.json({ place: null }, { status: 400 });
+  if (text.length < 2) {
+    return NextResponse.json({ places: [], provider: "none" });
   }
 
   const googleConfigured = await isGooglePlacesConfiguredAsync();
   if (!googleConfigured && !isGeoapifyConfigured()) {
-    console.error("address/geocode: no address provider configured");
+    console.error("places/autocomplete: no address provider configured");
     return NextResponse.json(
-      { place: null, error: "address_provider_not_configured" },
+      { places: [], provider: "none", error: "address_provider_not_configured" },
       { status: 503 },
     );
   }
 
   try {
-    const place = await addressGeocode(text);
-    return NextResponse.json({ place });
+    const { places, provider } = await addressAutocomplete(text);
+    return NextResponse.json({ places, provider });
   } catch (err) {
-    console.error("address/geocode error:", err);
+    console.error("places/autocomplete error:", err);
     return NextResponse.json(
-      { place: null, error: "geocode_request_failed" },
+      { places: [], provider: "none", error: "autocomplete_request_failed" },
       { status: 502 },
     );
   }

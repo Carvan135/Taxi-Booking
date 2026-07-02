@@ -14,7 +14,7 @@ export async function GET(req: Request) {
 
   const googleConfigured = await isGooglePlacesConfiguredAsync();
   if (!googleConfigured && !isGeoapifyConfigured()) {
-    console.error("address/geocode: no address provider configured");
+    console.error("places/geocode: no address provider configured");
     return NextResponse.json(
       { place: null, error: "address_provider_not_configured" },
       { status: 503 },
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     const place = await addressGeocode(text);
     return NextResponse.json({ place });
   } catch (err) {
-    console.error("address/geocode error:", err);
+    console.error("places/geocode error:", err);
     return NextResponse.json(
       { place: null, error: "geocode_request_failed" },
       { status: 502 },

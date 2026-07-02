@@ -69,7 +69,7 @@ function deriveStatus(checks: HealthChecks, readiness: boolean): HealthStatus {
   if (readiness) {
     const optionalConfigured = [
       checks.emailConfigured,
-      checks.geoapifyConfigured,
+      checks.googlePlacesConfigured || checks.geoapifyConfigured,
       checks.stripePublishableKeyConfigured,
     ].filter(Boolean).length;
 

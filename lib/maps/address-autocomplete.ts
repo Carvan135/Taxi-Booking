@@ -1,4 +1,4 @@
-import { isGooglePlacesConfigured } from "@/lib/env/google-places";
+import { isGooglePlacesConfiguredAsync } from "@/lib/env/google-places";
 import { autocomplete as geoapifyAutocomplete } from "@/lib/maps/geoapify-server";
 import { geocode as geoapifyGeocode } from "@/lib/maps/geoapify-server";
 import {
@@ -7,23 +7,35 @@ import {
 } from "@/lib/maps/google-places-server";
 import type { GeoPlace } from "@/lib/maps/types";
 
-/** Address suggestions: Google Places first, Geoapify fallback. */
-export async function addressAutocomplete(query: string): Promise<GeoPlace[]> {
-  const text = query.trim();
-  if (text.length < 2) return [];
+export type AddressProvider = "google" | "geoapify" | "none";
 
-  if (isGooglePlacesConfigured()) {
+export type AddressAutocompleteResult = {
+  places: GeoPlace[];
+  provider: AddressProvider;
+};
+
+/** Address suggestions: Google Places first, Geoapify fallback. */
+export async function addressAutocomplete(
+  query: string,
+): Promise<AddressAutocompleteResult> {
+  const text = query.trim();
+  if (text.length < 2) {
+    return { places: [], provider: "none" };
+  }
+
+  if (await isGooglePlacesConfiguredAsync()) {
     try {
       const places = await googlePlacesAutocomplete(text);
       if (places.length > 0) {
-        return places;
+        return { places, provider: "google" };
       }
     } catch (err) {
       console.error("Google Places autocomplete error:", err);
     }
   }
 
-  return geoapifyAutocomplete(text);
+  const places = await geoapifyAutocomplete(text);
+  return { places, provider: places.length > 0 ? "geoapify" : "none" };
 }
 
 /** Geocode free-text address: Google Places first, Geoapify fallback. */
@@ -31,7 +43,7 @@ export async function addressGeocode(text: string): Promise<GeoPlace | null> {
   const query = text.trim();
   if (query.length < 3) return null;
 
-  if (isGooglePlacesConfigured()) {
+  if (await isGooglePlacesConfiguredAsync()) {
     try {
       const place = await googleGeocode(query);
       if (place) return place;

@@ -26,7 +26,7 @@ export async function GET(req: Request) {
     }
     return NextResponse.json({ place });
   } catch (err) {
-    console.error("geoapify/resolve-address error:", err);
+    console.error("places/resolve-address error:", err);
     return NextResponse.json(
       { place: null, error: "resolve_failed" },
       { status: 502 },
