@@ -408,7 +408,9 @@ function EmptyOperatorsState() {
         No operators available for this vehicle type
       </p>
       <p className="mt-2 text-sm text-content/60">
-        Try a different vehicle type or adjust your journey details.
+        Operators must be approved and not paused in admin. Try a different
+        vehicle type, or check that your operator&apos;s fleet includes the type
+        you selected.
       </p>
       <Link
         href="/book"

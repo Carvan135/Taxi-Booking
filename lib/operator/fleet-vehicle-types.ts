@@ -117,5 +117,15 @@ export function operatorMatchesServiceType(
   serviceType: OperatorFleetVehicleType,
 ): boolean {
   const fleet = resolveOperatorFleetTypes(input);
-  return fleet.includes(serviceType);
+  if (fleet.length > 0) {
+    return fleet.includes(serviceType);
+  }
+
+  const vehicleType = String(input.vehicle_type ?? "").trim();
+  if (!vehicleType) {
+    // Missing fleet metadata should not hide approved operators from search.
+    return true;
+  }
+
+  return normalizeBookingServiceType(vehicleType) === serviceType;
 }

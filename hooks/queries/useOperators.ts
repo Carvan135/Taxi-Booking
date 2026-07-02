@@ -1,68 +1,43 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { operatorMatchesServiceType } from "@/lib/operator/fleet-vehicle-types";
-import { OPERATOR_STATUS } from "@/lib/validations/enums";
+import { normalizeBookingServiceType } from "@/lib/operator/fleet-vehicle-types";
 import type { ServiceType } from "@/lib/validations/enums";
-import { createClient } from "@/lib/supabase/client";
-import type {
-  OperatorBasePricingSummary,
-  OperatorListItem,
-} from "@/types";
+import type { OperatorListItem } from "@/types";
 import { operatorKeys } from "./keys";
 
 const DEFAULT_STALE_TIME = 1000 * 60;
 
-type OperatorRow = OperatorListItem & {
-  operator_base_pricing:
-    | OperatorBasePricingSummary
-    | OperatorBasePricingSummary[]
-    | null;
-};
-
-function normalizePricing(
-  raw: OperatorRow["operator_base_pricing"],
-): OperatorBasePricingSummary | null {
-  if (!raw) return null;
-  if (Array.isArray(raw)) return raw[0] ?? null;
-  return raw;
-}
-
 export function useApprovedOperators(serviceType?: ServiceType) {
-  const supabase = createClient();
+  const normalizedServiceType = serviceType
+    ? normalizeBookingServiceType(serviceType)
+    : undefined;
 
   return useQuery({
-    queryKey: operatorKeys.approved(serviceType),
+    queryKey: operatorKeys.approved(normalizedServiceType),
     queryFn: async (): Promise<OperatorListItem[]> => {
-      const { data, error } = await supabase
-        .from("operators")
-        .select(
-          `
-          *,
-          operator_base_pricing ( base_fare, per_mile, per_minute )
-        `,
-        )
-        .eq("status", OPERATOR_STATUS.approved)
-        .eq("is_paused", false)
-        .order("rating", { ascending: false });
+      const params = new URLSearchParams();
+      if (normalizedServiceType) {
+        params.set("service_type", normalizedServiceType);
+      }
 
-      if (error) throw error;
+      const url = params.size
+        ? `/api/booking/operators?${params.toString()}`
+        : "/api/booking/operators";
 
-      const rows = ((data ?? []) as OperatorRow[]).map((row) => {
-        const { operator_base_pricing: pricingRaw, ...operator } = row;
-        return {
-          ...operator,
-          operator_base_pricing: normalizePricing(pricingRaw),
-        };
-      });
+      const res = await fetch(url);
+      const body = (await res.json()) as {
+        operators?: OperatorListItem[];
+        error?: string;
+      };
 
-      if (!serviceType) return rows;
+      if (!res.ok) {
+        throw new Error(body.error ?? "Could not load operators");
+      }
 
-      return rows.filter((operator) =>
-        operatorMatchesServiceType(operator, serviceType),
-      );
+      return body.operators ?? [];
     },
-    enabled: serviceType !== undefined,
+    enabled: normalizedServiceType !== undefined,
     staleTime: DEFAULT_STALE_TIME,
   });
 }
