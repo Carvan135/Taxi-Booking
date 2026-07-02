@@ -98,7 +98,15 @@ export async function loadBookingEmailSnapshotByReference(
     .eq("reference", reference)
     .maybeSingle();
 
-  if (error || !primary) return null;
+  if (error) {
+    console.error(
+      "loadBookingEmailSnapshotByReference failed:",
+      reference,
+      error.message,
+    );
+    return null;
+  }
+  if (!primary) return null;
 
   let rows = [primary];
   if (primary.group_reference) {

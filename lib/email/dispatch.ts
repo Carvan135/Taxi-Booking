@@ -28,6 +28,8 @@ function bookingLookupUrl(reference: string, email: string): string {
   return `${appUrl}/bookings/lookup?${params.toString()}`;
 }
 
+type CustomerEmailSendResult = { sent: boolean; error?: string };
+
 async function sendToCustomerEmail(
   to: string,
   emailType: string,
@@ -39,7 +41,7 @@ async function sendToCustomerEmail(
     text?: string;
     attachments?: { filename: string; content: Buffer }[];
   },
-): Promise<void> {
+): Promise<CustomerEmailSendResult> {
   const result = await sendTransactionalEmail({
     to,
     subject: payload.subject,
@@ -51,8 +53,9 @@ async function sendToCustomerEmail(
     user_id: userId,
   });
   if (result.error) {
-    console.error("Customer email failed:", result.error);
+    console.error("Customer email failed:", emailType, result.error);
   }
+  return { sent: result.sent, error: result.error };
 }
 
 export async function sendBookingConfirmationEmails(
@@ -168,33 +171,46 @@ export async function sendCustomerTripEmail(
     type: CustomerTripEmailType;
     data?: Record<string, string>;
   },
-): Promise<void> {
+): Promise<CustomerEmailSendResult> {
   let email = input.customerEmail?.trim() ?? "";
   if (!email && input.customerId) {
     email = (await resolveProfileEmail(supabase, input.customerId)) ?? "";
   }
-  if (!email) return;
+  if (!email) {
+    return { sent: false, error: "No customer email" };
+  }
 
   if (input.type === "operator_marked_complete") {
-    const snapshot = await loadBookingEmailSnapshotByReference(
-      supabase,
-      input.reference,
-    );
-    if (snapshot) {
-      const bookingData = snapshotToBookingEmailData(snapshot);
-      const hours = Number(input.data?.hours ?? "24");
-      const payload = completionRequestEmail({
-        ...bookingData,
-        autoCompleteHours: Number.isFinite(hours) ? hours : 24,
-      });
-      await sendToCustomerEmail(
-        email,
-        input.type,
-        input.bookingId,
-        input.customerId ?? null,
-        payload,
+    try {
+      const snapshot = await loadBookingEmailSnapshotByReference(
+        supabase,
+        input.reference,
       );
-      return;
+      if (snapshot) {
+        const bookingData = snapshotToBookingEmailData(snapshot);
+        const hours = Number(input.data?.hours ?? "24");
+        const payload = completionRequestEmail({
+          ...bookingData,
+          autoCompleteHours: Number.isFinite(hours) ? hours : 24,
+        });
+        const result = await sendToCustomerEmail(
+          email,
+          input.type,
+          input.bookingId,
+          input.customerId ?? null,
+          payload,
+        );
+        if (result.sent) return result;
+        console.error(
+          "Completion request email failed, falling back to trip update:",
+          result.error,
+        );
+      }
+    } catch (err) {
+      console.error(
+        "Completion request email failed, falling back to trip update:",
+        err,
+      );
     }
   }
 
@@ -212,14 +228,13 @@ export async function sendCustomerTripEmail(
           ? refundAmount
           : undefined,
     });
-    await sendToCustomerEmail(
+    return sendToCustomerEmail(
       email,
       input.type,
       input.bookingId,
       input.customerId ?? null,
       payload,
     );
-    return;
   }
 
   const content = getNotificationContent(input.type, {
@@ -237,7 +252,7 @@ export async function sendCustomerTripEmail(
     actionHref: lookupUrl,
   });
 
-  await sendToCustomerEmail(
+  return sendToCustomerEmail(
     email,
     input.type,
     input.bookingId,

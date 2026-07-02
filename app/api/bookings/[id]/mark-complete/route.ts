@@ -104,7 +104,7 @@ export async function POST(_req: Request, context: RouteContext) {
       });
     }
 
-    await sendCustomerTripEmail(admin, {
+    const emailResult = await sendCustomerTripEmail(admin, {
       bookingId,
       reference: booking.reference,
       customerEmail: booking.customer_email,
@@ -114,9 +114,18 @@ export async function POST(_req: Request, context: RouteContext) {
       data: { hours: String(autoCompleteHours) },
     });
 
+    if (!emailResult.sent) {
+      console.error(
+        "mark-complete: customer email not sent:",
+        bookingId,
+        emailResult.error ?? "unknown error",
+      );
+    }
+
     return NextResponse.json({
       success: true,
       auto_complete_at: autoCompleteAt,
+      customer_email_sent: emailResult.sent,
     });
   } catch (err) {
     console.error("mark-complete error:", err);
